@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微信表情包/横幅批量生成器</title>
+    <title>微信表情包/视频转GIF工具</title>
     
     <!-- 1. 引入 Tailwind CSS (样式库) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,6 +17,9 @@
     
     <!-- 4. 引入 JSZip (用于打包下载) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- 5. 引入 gif.js (用于生成 GIF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
     <style>
         /* 自定义一些动画 */
@@ -24,6 +27,10 @@
         .animate-spin { animation: spin 1s linear infinite; }
         .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        
+        /* 隐藏滚动条但保持滚动 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -31,28 +38,16 @@
 
     <script type="text/babel">
         // 获取 React Hooks
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useRef } = React;
 
-        // --- 图标组件 (内联 SVG 以避免依赖) ---
+        // --- 图标组件 ---
         const Icon = ({ path, size = 24, className = "" }) => (
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width={size} 
-                height={size} 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                className={className}
-            >
-                {path}
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
 
         const Icons = {
             ImageIcon: (props) => <Icon {...props} path={<><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></>} />,
+            VideoIcon: (props) => <Icon {...props} path={<><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></>} />,
             Upload: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>} />,
             Download: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>} />,
             Settings: (props) => <Icon {...props} path={<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>} />,
@@ -70,6 +65,9 @@
         const App = () => {
             const [items, setItems] = useState([]);
             
+            // 模式状态：'static' | 'dynamic'
+            const [mode, setMode] = useState('static');
+
             // 设置状态
             const [targetSize, setTargetSize] = useState({ w: 240, h: 240 });
             const [quality, setQuality] = useState(0.9);
@@ -78,11 +76,24 @@
             const [bgTolerance, setBgTolerance] = useState(20);
             const [isGlobalProcessing, setIsGlobalProcessing] = useState(false);
             const [isZipping, setIsZipping] = useState(false);
-            
-            // 清空确认状态
             const [clearConfirm, setClearConfirm] = useState(false);
+            const [workerBlobUrl, setWorkerBlobUrl] = useState(null);
 
-            // 预设尺寸列表
+            // 初始化：加载 gif.js 的 worker
+            useEffect(() => {
+                const fetchWorker = async () => {
+                    try {
+                        const response = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                        const text = await response.text();
+                        const blob = new Blob([text], { type: 'application/javascript' });
+                        setWorkerBlobUrl(URL.createObjectURL(blob));
+                    } catch (e) {
+                        console.error("Failed to load gif worker", e);
+                    }
+                };
+                fetchWorker();
+            }, []);
+
             const sizePresets = [
                 { w: 50, h: 50, label: '50x50 (图标)' },
                 { w: 120, h: 120, label: '120x120' },
@@ -95,7 +106,12 @@
 
             const addFiles = (files) => {
                 const newItems = Array.from(files)
-                .filter(file => file.type.match('image.*'))
+                .filter(file => {
+                    // 根据模式过滤文件类型
+                    if (mode === 'static') return file.type.match('image.*');
+                    if (mode === 'dynamic') return file.type.match('video.*');
+                    return false;
+                })
                 .map(file => ({
                     id: generateId(),
                     file,
@@ -103,11 +119,12 @@
                     processedUrl: null,
                     size: 0,
                     status: 'pending',
-                    name: file.name
+                    name: file.name,
+                    type: mode === 'dynamic' ? 'video' : 'image' // 显式标记类型
                 }));
 
                 if (newItems.length === 0) {
-                    if (files.length > 0) alert('请上传有效的图片文件');
+                    if (files.length > 0) alert(mode === 'static' ? '请上传图片文件 (JPG, PNG等)' : '请上传视频文件 (MP4, MOV等)');
                     return;
                 }
 
@@ -124,106 +141,161 @@
                 });
             };
 
-            const handleFileUpload = (e) => {
-                if (e.target.files) addFiles(e.target.files);
-                e.target.value = '';
-            };
-
             const handleDrop = (e) => {
                 e.preventDefault();
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            const processItemImage = useCallback(async (item, width, height, color, q, removeBg, tolerance) => {
+            // 处理单帧图像逻辑
+            const drawFrame = (ctx, source, width, height, color, removeBg, tolerance) => {
+                ctx.clearRect(0, 0, width, height);
+                if (color !== 'transparent') {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0, 0, width, height);
+                }
+
+                const srcW = source.videoWidth || source.width;
+                const srcH = source.videoHeight || source.height;
+                const scale = Math.min(width / srcW, height / srcH);
+                const w = srcW * scale;
+                const h = srcH * scale;
+                const x = (width - w) / 2;
+                const y = (height - h) / 2;
+
+                ctx.drawImage(source, x, y, w, h);
+
+                if (removeBg) {
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    const tol = tolerance || 20;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        if (r > 255 - tol && g > 255 - tol && b > 255 - tol) {
+                            data[i + 3] = 0;
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                }
+            };
+
+            const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl) => {
                 if (!item.originalUrl) return item;
 
-                return new Promise((resolve) => {
-                const img = new Image();
-                img.src = item.originalUrl;
-                
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+                // --- 视频处理逻辑 ---
+                if (item.type === 'video') {
+                    if (!workerUrl) return { ...item, status: 'error' };
                     
-                    // 设置画布尺寸
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.clearRect(0, 0, width, height);
+                    return new Promise((resolve) => {
+                        const video = document.createElement('video');
+                        video.src = item.originalUrl;
+                        video.muted = true;
+                        video.crossOrigin = "anonymous";
+                        
+                        video.onloadedmetadata = () => {
+                            const fps = 8;
+                            const maxDuration = 3;
+                            const duration = Math.min(video.duration, maxDuration);
+                            const interval = 1 / fps;
+                            let currentTime = 0;
 
-                    // 1. 填充背景
-                    if (color !== 'transparent') {
-                        ctx.fillStyle = color;
-                        ctx.fillRect(0, 0, width, height);
-                    }
+                            const gif = new GIF({
+                                workers: 2,
+                                quality: 10,
+                                width: width,
+                                height: height,
+                                workerScript: workerUrl,
+                                repeat: 0,
+                                background: color === 'white' ? '#ffffff' : undefined,
+                                transparent: color === 'transparent' ? 0x00000000 : null
+                            });
 
-                    // 2. 计算缩放（保持长宽比，Contain模式）
-                    const scale = Math.min(width / img.width, height / img.height);
-                    const w = img.width * scale;
-                    const h = img.height * scale;
-                    // 居中显示
-                    const x = (width - w) / 2;
-                    const y = (height - h) / 2;
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
 
-                    ctx.drawImage(img, x, y, w, h);
+                            const captureFrame = () => {
+                                if (currentTime > duration) {
+                                    gif.render();
+                                    return;
+                                }
+                                video.currentTime = currentTime;
+                            };
 
-                    // 3. 去底逻辑
-                    if (removeBg) {
-                        const imageData = ctx.getImageData(0, 0, width, height);
-                        const data = imageData.data;
-                        const tol = tolerance || 20;
+                            video.onseeked = () => {
+                                drawFrame(ctx, video, width, height, color, removeBg, tolerance);
+                                gif.addFrame(ctx, {copy: true, delay: interval * 1000});
+                                currentTime += interval;
+                                captureFrame();
+                            };
 
-                        for (let i = 0; i < data.length; i += 4) {
-                            const r = data[i];
-                            const g = data[i + 1];
-                            const b = data[i + 2];
-                            if (r > 255 - tol && g > 255 - tol && b > 255 - tol) {
-                                data[i + 3] = 0;
-                            }
-                        }
-                        ctx.putImageData(imageData, 0, 0);
-                    }
+                            gif.on('finished', (blob) => {
+                                resolve({
+                                    ...item,
+                                    processedUrl: URL.createObjectURL(blob),
+                                    size: blob.size,
+                                    status: 'done',
+                                    name: item.name.replace(/\.[^/.]+$/, "") + ".gif"
+                                });
+                            });
+                            captureFrame();
+                        };
+                        video.onerror = () => resolve({ ...item, status: 'error' });
+                    });
+                }
 
-                    canvas.toBlob((blob) => {
-                    if (blob) {
-                        resolve({
-                            ...item,
-                            processedUrl: URL.createObjectURL(blob),
-                            size: blob.size,
-                            status: 'done'
-                        });
-                    } else {
-                        resolve({ ...item, status: 'error' });
-                    }
-                    }, 'image/png', q);
-                };
-                img.onerror = () => resolve({ ...item, status: 'error' });
+                // --- 图片处理逻辑 ---
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.src = item.originalUrl;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        drawFrame(ctx, img, width, height, color, removeBg, tolerance);
+
+                        canvas.toBlob((blob) => {
+                            resolve({
+                                ...item,
+                                processedUrl: URL.createObjectURL(blob),
+                                size: blob.size,
+                                status: 'done',
+                                name: item.name.replace(/\.[^/.]+$/, "") + ".png"
+                            });
+                        }, 'image/png', q);
+                    };
+                    img.onerror = () => resolve({ ...item, status: 'error' });
                 });
             }, []);
 
             useEffect(() => {
                 const processQueue = async () => {
-                const itemsToProcess = items.filter(item => item.originalUrl && item.status === 'pending');
-                
-                if (itemsToProcess.length > 0) {
-                    setIsGlobalProcessing(true);
-                    const processedResults = await Promise.all(
-                        itemsToProcess.map(item => processItemImage(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance))
-                    );
-                    
-                    setItems(prev => prev.map(prevItem => {
-                        const processed = processedResults.find(p => p.id === prevItem.id);
-                        return processed || prevItem;
-                    }));
-                    setIsGlobalProcessing(false);
-                }
-                };
+                    const itemsToProcess = items.filter(item => item.originalUrl && item.status === 'pending');
+                    if (itemsToProcess.length > 0) {
+                        setIsGlobalProcessing(true);
+                        if (itemsToProcess.some(i => i.type === 'video') && !workerBlobUrl) {}
 
+                        const processedResults = await Promise.all(
+                            itemsToProcess.map(item => processItem(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl))
+                        );
+                        
+                        setItems(prev => prev.map(prevItem => {
+                            const processed = processedResults.find(p => p.id === prevItem.id);
+                            return processed || prevItem;
+                        }));
+                        setIsGlobalProcessing(false);
+                    }
+                };
                 processQueue();
-            }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, processItemImage]);
+            }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem]);
 
             useEffect(() => {
                 setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
-            }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance]);
+            }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl]);
 
 
             const formatSize = (bytes) => {
@@ -238,17 +310,14 @@
                 setItems(prev => prev.filter(item => item.id !== id));
             };
 
-            // 修正后的清空函数：不依赖 window.confirm，使用按钮状态二次确认
             const removeAll = () => {
                 if (clearConfirm) {
                     setItems([]);
                     setClearConfirm(false);
-                    // 确保重置文件输入框，允许重新上传同名文件
                     const fileInput = document.getElementById('fileInput');
                     if (fileInput) fileInput.value = '';
                 } else {
                     setClearConfirm(true);
-                    // 3秒后如果没有点击确认，自动恢复
                     setTimeout(() => setClearConfirm(false), 3000);
                 }
             };
@@ -257,75 +326,89 @@
                 if (!item.processedUrl) return;
                 const link = document.createElement('a');
                 link.href = item.processedUrl;
-                // 文件名加上尺寸后缀
-                link.download = `sticker_${item.name.replace(/\.[^/.]+$/, "")}_${targetSize.w}x${targetSize.h}.png`;
+                link.download = item.name;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             };
 
             const downloadAllZip = async () => {
-                if (!window.JSZip) {
-                    alert("JSZip 库加载失败，请检查网络");
-                    return;
-                }
-                
+                if (!window.JSZip) return alert("组件加载中...");
                 setIsZipping(true);
                 const zip = new JSZip();
-                const folder = zip.folder("wechat_stickers");
-
+                const folder = zip.folder("stickers");
                 let count = 0;
-                
                 for (const item of items) {
-                if (item.processedUrl) {
-                    try {
-                    const response = await fetch(item.processedUrl);
-                    const blob = await response.blob();
-                    folder.file(`sticker_${item.name.replace(/\.[^/.]+$/, "")}_${targetSize.w}x${targetSize.h}.png`, blob);
-                    count++;
-                    } catch (e) {
-                    console.error("Failed to zip item:", item.name);
+                    if (item.processedUrl) {
+                        try {
+                            const response = await fetch(item.processedUrl);
+                            const blob = await response.blob();
+                            folder.file(item.name, blob);
+                            count++;
+                        } catch (e) { console.error(e); }
                     }
                 }
-                }
-
                 if (count > 0) {
-                try {
                     const content = await zip.generateAsync({ type: "blob" });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(content);
-                    link.download = "wechat_stickers.zip";
+                    link.download = "stickers.zip";
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                } catch (e) {
-                    alert("打包失败，请重试");
-                }
-                } else {
-                alert("没有可下载的图片");
                 }
                 setIsZipping(false);
             };
 
-            // --- 渲染界面 ---
+            // Mode 切换器组件
+            const ModeSwitcher = () => (
+                <div className="flex gap-4 mb-8">
+                    <button 
+                        onClick={() => { setMode('static'); setRemoveWhiteBg(false); }}
+                        className={`flex-1 p-6 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-4 group ${mode === 'static' ? 'border-green-500 bg-green-50 text-green-700 shadow-md ring-2 ring-green-500 ring-offset-2' : 'border-gray-200 bg-white text-gray-500 hover:border-green-200 hover:bg-gray-50'}`}
+                    >
+                        <div className={`p-3 rounded-full ${mode === 'static' ? 'bg-green-200' : 'bg-gray-100 group-hover:bg-white'}`}>
+                            <Icons.ImageIcon size={28} className={mode === 'static' ? 'text-green-700' : 'text-gray-400'} />
+                        </div>
+                        <div className="text-left">
+                            <div className="font-bold text-lg">静态表情</div>
+                            <div className="text-xs opacity-70">支持 JPG, PNG, WEBP</div>
+                        </div>
+                    </button>
+                    
+                    <button 
+                        onClick={() => { setMode('dynamic'); setRemoveWhiteBg(false); }}
+                        className={`flex-1 p-6 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-4 group ${mode === 'dynamic' ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-500 ring-offset-2' : 'border-gray-200 bg-white text-gray-500 hover:border-purple-200 hover:bg-gray-50'}`}
+                    >
+                        <div className={`p-3 rounded-full ${mode === 'dynamic' ? 'bg-purple-200' : 'bg-gray-100 group-hover:bg-white'}`}>
+                            <Icons.VideoIcon size={28} className={mode === 'dynamic' ? 'text-purple-700' : 'text-gray-400'} />
+                        </div>
+                        <div className="text-left">
+                            <div className="font-bold text-lg">动态表情</div>
+                            <div className="text-xs opacity-70">视频自动转循环GIF</div>
+                        </div>
+                    </button>
+                </div>
+            );
+
+            const activeColor = mode === 'static' ? 'green' : 'purple';
+            // Tailwind 动态类名需要完整拼写才能被JIT捕获，这里简单处理，或者直接用 style，或者列举
+            // 简单处理：只用 text/bg/border 类
+
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
                 <div className="max-w-6xl mx-auto">
                     <header className="mb-8 text-center">
-                    <div className="inline-flex items-center justify-center p-3 bg-green-500 text-white rounded-2xl shadow-lg mb-4">
-                        <Icons.ImageIcon size={32} />
-                    </div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">微信表情包/横幅生成器</h1>
-                    <p className="text-gray-500">支持标准表情(240x240)、图标(50x50)、横幅(750x400)等多种尺寸</p>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">全能表情包工厂</h1>
+                        <p className="text-gray-500">快速制作微信表情包 · 本地处理保护隐私</p>
                     </header>
 
+                    <ModeSwitcher />
+
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* 左侧：操作面板 */}
                     <div className="lg:col-span-4 space-y-6">
-                        
-                        {/* 上传区域 */}
                         <div 
-                        className="border-4 border-dashed border-gray-200 rounded-3xl bg-white p-8 text-center transition-all hover:border-green-400 hover:bg-green-50 cursor-pointer group shadow-sm relative overflow-hidden"
+                        className={`border-4 border-dashed rounded-3xl bg-white p-8 text-center transition-all cursor-pointer group shadow-sm relative overflow-hidden ${mode === 'static' ? 'border-gray-200 hover:border-green-400 hover:bg-green-50' : 'border-gray-200 hover:border-purple-400 hover:bg-purple-50'}`}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDrop}
                         onClick={() => document.getElementById('fileInput').click()}
@@ -334,221 +417,120 @@
                             type="file" 
                             id="fileInput" 
                             className="hidden" 
-                            accept="image/*" 
+                            accept={mode === 'static' ? "image/*" : "video/*"} 
                             multiple 
-                            onChange={handleFileUpload} 
+                            onChange={(e) => {if(e.target.files) addFiles(e.target.files); e.target.value='';}} 
                         />
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                            <Icons.Plus size={32} />
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform ${mode === 'static' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'}`}>
+                            {mode === 'static' ? <Icons.Plus size={32} /> : <Icons.VideoIcon size={32} />}
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-700 mb-1">添加图片</h3>
-                        <p className="text-gray-400 text-xs">支持批量 JPG, PNG, WEBP</p>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                            {mode === 'static' ? '点击添加图片' : '点击添加视频'}
+                        </h3>
+                        <p className="text-gray-400 text-xs">
+                            {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : '支持 MP4, MOV (自动转GIF)'}
+                        </p>
                         </div>
 
-                        {/* 设置区域 */}
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                <Icons.Settings size={20} className="text-gray-400" />
-                                参数设置
-                                </h3>
+                                <h3 className="font-bold text-lg flex items-center gap-2"><Icons.Settings size={20} className="text-gray-400" />参数设置</h3>
                             </div>
-                            
                             <div className="space-y-6">
                                 <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">
-                                    目标尺寸 (像素)
-                                </label>
+                                <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸</label>
                                 <div className="flex flex-wrap gap-2">
                                     {sizePresets.map(preset => (
-                                    <button
-                                        key={preset.label}
-                                        onClick={() => setTargetSize({ w: preset.w, h: preset.h })}
-                                        className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${
-                                        targetSize.w === preset.w && targetSize.h === preset.h
-                                        ? 'bg-green-500 text-white border-green-500 shadow-md' 
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'
-                                        }`}
-                                    >
-                                        {preset.label}
-                                    </button>
+                                    <button key={preset.label} onClick={() => setTargetSize({ w: preset.w, h: preset.h })} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? (mode==='static' ? 'bg-green-500 text-white border-green-500 shadow-md' : 'bg-purple-500 text-white border-purple-500 shadow-md') : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{preset.label}</button>
                                     ))}
                                 </div>
-                                <div className="mt-2 text-xs text-gray-400 text-right">
-                                    当前: {targetSize.w} x {targetSize.h} px
-                                </div>
+                                <div className="mt-2 text-xs text-gray-400 text-right">当前: {targetSize.w} x {targetSize.h} px</div>
                                 </div>
 
                                 <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">
-                                    背景处理
-                                </label>
+                                <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
                                 <div className="flex gap-2 mb-3">
-                                    <button 
-                                    onClick={() => setPaddingColor('transparent')}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${
-                                        paddingColor === 'transparent' ? 'ring-2 ring-green-500 border-green-500 bg-green-50 text-green-700' : 'border-gray-200'
-                                    }`}
-                                    >
-                                    <div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>
-                                    透明边缘
-                                    </button>
-                                    <button 
-                                    onClick={() => setPaddingColor('white')}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${
-                                        paddingColor === 'white' ? 'ring-2 ring-green-500 border-green-500 bg-white text-gray-900' : 'border-gray-200'
-                                    }`}
-                                    >
-                                    <div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>
-                                    白色边缘
-                                    </button>
+                                    <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? (mode==='static'?'ring-2 ring-green-500 border-green-500 bg-green-50 text-green-700':'ring-2 ring-purple-500 border-purple-500 bg-purple-50 text-purple-700') : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明边缘</button>
+                                    <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? (mode==='static'?'ring-2 ring-green-500 border-green-500 bg-white text-gray-900':'ring-2 ring-purple-500 border-purple-500 bg-white text-gray-900') : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色边缘</button>
                                 </div>
-
-                                <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
-                                    <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeWhiteBg ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>
-                                        {removeWhiteBg && <Icons.CheckCircle size={14} className="text-white" />}
+                                
+                                {mode === 'static' && (
+                                    <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
+                                        <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeWhiteBg ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>{removeWhiteBg && <Icons.CheckCircle size={14} className="text-white" />}</div>
+                                            <input type="checkbox" className="hidden" checked={removeWhiteBg} onChange={(e) => setRemoveWhiteBg(e.target.checked)} />
+                                            <span className={`text-sm font-medium ${removeWhiteBg ? 'text-blue-700' : 'text-gray-600'}`}>去除白色背景</span>
+                                        </label>
+                                        <Icons.Wand2 size={16} className={`${removeWhiteBg ? 'text-blue-500' : 'text-gray-400'}`} />
                                         </div>
-                                        <input 
-                                        type="checkbox" 
-                                        className="hidden"
-                                        checked={removeWhiteBg}
-                                        onChange={(e) => setRemoveWhiteBg(e.target.checked)}
-                                        />
-                                        <span className={`text-sm font-medium ${removeWhiteBg ? 'text-blue-700' : 'text-gray-600'}`}>
-                                        去除白色背景 (简单)
-                                        </span>
-                                    </label>
-                                    <Icons.Wand2 size={16} className={`${removeWhiteBg ? 'text-blue-500' : 'text-gray-400'}`} />
-                                    </div>
-                                    
-                                    {removeWhiteBg && (
-                                    <div className="mt-2 pt-2 border-t border-blue-100">
-                                        <div className="flex justify-between text-xs text-blue-600 mb-1">
-                                        <span>强度:弱</span>
-                                        <span>强</span>
+                                        {removeWhiteBg && (
+                                        <div className="mt-2 pt-2 border-t border-blue-100">
+                                            <div className="flex justify-between text-xs text-blue-600 mb-1"><span>强度:弱</span><span>强</span></div>
+                                            <input type="range" min="1" max="100" value={bgTolerance} onChange={(e) => setBgTolerance(parseInt(e.target.value))} className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                                         </div>
-                                        <input 
-                                        type="range" 
-                                        min="1" max="100" 
-                                        value={bgTolerance} 
-                                        onChange={(e) => setBgTolerance(parseInt(e.target.value))}
-                                        className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                                        />
-                                        <p className="text-[10px] text-blue-400 mt-1">适合原图是白底的情况，将白色变为透明</p>
+                                        )}
                                     </div>
-                                    )}
-                                </div>
+                                )}
+                                
+                                {mode === 'dynamic' && (
+                                    <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 text-xs">
+                                        <p className="font-bold mb-1">GIF 模式说明：</p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li>自动截取前 3 秒</li>
+                                            <li>帧率优化为 8 FPS</li>
+                                            <li>自动循环播放</li>
+                                        </ul>
+                                    </div>
+                                )}
                                 </div>
 
                                 {items.length > 0 && (
                                 <div className="pt-4 border-t border-gray-100 space-y-3">
-                                    <button 
-                                    onClick={downloadAllZip}
-                                    disabled={isZipping}
-                                    className={`w-full py-3 text-white rounded-xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${
-                                        isZipping ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                                    }`}
-                                    >
-                                    {isZipping ? <Icons.RefreshCw className="animate-spin" size={18}/> : <Icons.Package size={18} />}
-                                    {isZipping ? '正在打包...' : `打包下载全部 (${items.length})`}
-                                    </button>
-                                    <button 
-                                    onClick={removeAll}
-                                    className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                                        clearConfirm 
-                                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-md' 
-                                        : 'text-red-500 hover:bg-red-50'
-                                    }`}
-                                    >
-                                    <Icons.Trash2 size={16} />
-                                    {clearConfirm ? '确定清空？' : '清空列表'}
-                                    </button>
+                                    <button onClick={downloadAllZip} disabled={isZipping} className={`w-full py-3 text-white rounded-xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isZipping ? 'bg-gray-400 cursor-not-allowed' : (mode==='static'?'bg-green-600 hover:bg-green-700':'bg-purple-600 hover:bg-purple-700')}`}>{isZipping ? <Icons.RefreshCw className="animate-spin" size={18}/> : <Icons.Package size={18} />}{isZipping ? '正在打包...' : `打包下载全部 (${items.length})`}</button>
+                                    <button onClick={removeAll} className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors ${clearConfirm ? 'bg-red-500 text-white hover:bg-red-600 shadow-md' : 'text-red-500 hover:bg-red-50'}`}><Icons.Trash2 size={16} />{clearConfirm ? '确定清空？' : '清空列表'}</button>
                                 </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* 右侧：结果列表 */}
                     <div className="lg:col-span-8">
                         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 min-h-[500px]">
                             <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <Icons.FileImage size={20} className="text-green-500"/>
-                                处理结果 ({items.length})
-                            </h3>
-                            {isGlobalProcessing && (
-                                <span className="text-sm text-green-600 flex items-center gap-2 animate-pulse">
-                                <Icons.RefreshCw size={14} className="animate-spin"/>
-                                处理中...
-                                </span>
-                            )}
+                            <h3 className="font-bold text-gray-800 flex items-center gap-2"><Icons.FileImage size={20} className={mode==='static'?'text-green-500':'text-purple-500'}/>处理结果 ({items.length})</h3>
+                            {isGlobalProcessing && <span className={`text-sm flex items-center gap-2 animate-pulse ${mode==='static'?'text-green-600':'text-purple-600'}`}><Icons.RefreshCw size={14} className="animate-spin"/>处理中...</span>}
                             </div>
 
                             {items.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {items.map(item => (
                                 <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
-                                    <button 
-                                    onClick={() => removeItem(item.id)}
-                                    className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                    <Icons.X size={14} />
-                                    </button>
-
-                                    {/* 预览容器：根据当前目标尺寸调整宽高比 */}
-                                    <div 
-                                        className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100"
-                                        style={{ aspectRatio: `${targetSize.w}/${targetSize.h}` }}
-                                    >
+                                    <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Icons.X size={14} /></button>
+                                    <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100 relative" style={{ aspectRatio: `${targetSize.w}/${targetSize.h}` }}>
                                     {item.processedUrl ? (
                                         <img src={item.processedUrl} alt="processed" className="max-w-full max-h-full object-contain" />
                                     ) : (
-                                        <Icons.RefreshCw className="animate-spin text-gray-400" />
+                                        <div className="flex flex-col items-center">
+                                            <Icons.RefreshCw className="animate-spin text-gray-400 mb-2" />
+                                            {item.type === 'video' && <span className="text-xs text-gray-400">转换中...</span>}
+                                        </div>
                                     )}
+                                    {item.type === 'video' && item.processedUrl && <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>}
                                     </div>
-
                                     <div className="space-y-1">
-                                    <div className="flex justify-between items-center text-xs text-gray-500">
-                                        <span className="truncate max-w-[80px]" title={item.name}>{item.name}</span>
-                                        <span className={`${item.size > 1024*1024 ? 'text-red-500 font-bold' : 'text-green-600'}`}>
-                                        {formatSize(item.size)}
-                                        </span>
-                                    </div>
-                                    
-                                    <button
-                                        onClick={() => downloadItem(item)}
-                                        disabled={!item.processedUrl}
-                                        className="w-full mt-2 py-1.5 bg-white border border-gray-200 hover:border-green-500 hover:text-green-600 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        <Icons.Download size={12} />
-                                        下载
-                                    </button>
+                                    <div className="flex justify-between items-center text-xs text-gray-500"><span className="truncate max-w-[80px]" title={item.name}>{item.name}</span><span className={`${item.size > 1024*1024 ? 'text-red-500 font-bold' : (item.type==='video'?'text-purple-600':'text-green-600')}`}>{formatSize(item.size)}</span></div>
+                                    <button onClick={() => downloadItem(item)} disabled={!item.processedUrl} className="w-full mt-2 py-1.5 bg-white border border-gray-200 hover:border-green-500 hover:text-green-600 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"><Icons.Download size={12} />下载</button>
                                     </div>
                                 </div>
                                 ))}
-                                
-                                <div 
-                                onClick={() => document.getElementById('fileInput').click()}
-                                className="border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-green-400 hover:text-green-500 hover:bg-green-50 transition-colors cursor-pointer min-h-[160px]"
-                                >
-                                <Icons.Plus size={24} className="mb-2" />
-                                <span className="text-sm font-medium">继续添加</span>
-                                </div>
+                                <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] ${mode==='static'?'hover:border-green-400 hover:text-green-500 hover:bg-green-50':'hover:border-purple-400 hover:text-purple-500 hover:bg-purple-50'}`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
                             </div>
                             ) : (
-                            <div className="h-64 flex flex-col items-center justify-center text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl">
-                                <p className="text-sm">暂无图片，请在左侧添加</p>
-                            </div>
+                            <div className="h-64 flex flex-col items-center justify-center text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl"><p className="text-sm">暂无素材，请在左侧添加图片或视频</p></div>
                             )}
                         </div>
                     </div>
-                    </div>
-                    
-                    <div className="mt-12 text-center text-gray-400 text-sm">
-                    <p>注意：“去除白色背景”会将图片中接近白色的部分变为透明，如果主体包含白色可能会被误删，请调节强度滑块。</p>
                     </div>
                 </div>
                 </div>
