@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微信表情包/视频转GIF工具</title>
+    <title>微信表情包尺寸批量转换工具By序曲</title>
     
     <!-- 1. 引入 Tailwind CSS (样式库) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,6 +31,28 @@
         /* 隐藏滚动条但保持滚动 */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 紧凑的 Range Input 样式 */
+        input[type=range] {
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: currentColor;
+            margin-top: -5px; 
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -58,7 +80,8 @@
             CheckCircle: (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
             FileImage: (props) => <Icon {...props} path={<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="10" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></>} />,
             Wand2: (props) => <Icon {...props} path={<><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></>} />,
-            Package: (props) => <Icon {...props} path={<><path d="m16.5 9.4-9-5.19"/><path d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></>} />
+            Package: (props) => <Icon {...props} path={<><path d="m16.5 9.4-9-5.19"/><path d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></>} />,
+            Sliders: (props) => <Icon {...props} path={<><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></>} />
         };
 
         // --- 主组件 ---
@@ -74,6 +97,14 @@
             const [paddingColor, setPaddingColor] = useState('transparent');
             const [removeWhiteBg, setRemoveWhiteBg] = useState(false);
             const [bgTolerance, setBgTolerance] = useState(20);
+            
+            // GIF 独立配置
+            const [gifConfig, setGifConfig] = useState({
+                fps: 8,
+                quality: 10, // gif.js 1-30, lower is better
+                duration: 3
+            });
+
             const [isGlobalProcessing, setIsGlobalProcessing] = useState(false);
             const [isZipping, setIsZipping] = useState(false);
             const [clearConfirm, setClearConfirm] = useState(false);
@@ -120,7 +151,7 @@
                     size: 0,
                     status: 'pending',
                     name: file.name,
-                    type: mode === 'dynamic' ? 'video' : 'image' // 显式标记类型
+                    type: mode === 'dynamic' ? 'video' : 'image'
                 }));
 
                 if (newItems.length === 0) {
@@ -180,7 +211,7 @@
                 }
             };
 
-            const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl) => {
+            const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl) return item;
 
                 // --- 视频处理逻辑 ---
@@ -194,15 +225,18 @@
                         video.crossOrigin = "anonymous";
                         
                         video.onloadedmetadata = () => {
-                            const fps = 8;
-                            const maxDuration = 3;
+                            // 读取具体的配置
+                            const fps = currentGifConfig.fps;
+                            const maxDuration = currentGifConfig.duration;
+                            const gifQuality = currentGifConfig.quality;
+
                             const duration = Math.min(video.duration, maxDuration);
                             const interval = 1 / fps;
                             let currentTime = 0;
 
                             const gif = new GIF({
                                 workers: 2,
-                                quality: 10,
+                                quality: gifQuality,
                                 width: width,
                                 height: height,
                                 workerScript: workerUrl,
@@ -280,7 +314,7 @@
                         if (itemsToProcess.some(i => i.type === 'video') && !workerBlobUrl) {}
 
                         const processedResults = await Promise.all(
-                            itemsToProcess.map(item => processItem(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl))
+                            itemsToProcess.map(item => processItem(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig))
                         );
                         
                         setItems(prev => prev.map(prevItem => {
@@ -291,11 +325,11 @@
                     }
                 };
                 processQueue();
-            }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem]);
+            }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
             useEffect(() => {
                 setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
-            }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl]);
+            }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig]);
 
 
             const formatSize = (bytes) => {
@@ -391,10 +425,6 @@
                 </div>
             );
 
-            const activeColor = mode === 'static' ? 'green' : 'purple';
-            // Tailwind 动态类名需要完整拼写才能被JIT捕获，这里简单处理，或者直接用 style，或者列举
-            // 简单处理：只用 text/bg/border 类
-
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
                 <div className="max-w-6xl mx-auto">
@@ -474,13 +504,50 @@
                                 )}
                                 
                                 {mode === 'dynamic' && (
-                                    <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 text-xs">
-                                        <p className="font-bold mb-1">GIF 模式说明：</p>
-                                        <ul className="list-disc pl-4 space-y-1">
-                                            <li>自动截取前 3 秒</li>
-                                            <li>帧率优化为 8 FPS</li>
-                                            <li>自动循环播放</li>
-                                        </ul>
+                                    <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2 text-purple-800">
+                                                <Icons.Sliders size={16} />
+                                                <h4 className="font-bold text-sm">GIF 压缩设置</h4>
+                                            </div>
+                                            <div className="flex gap-1.5">
+                                                 <button onClick={() => setGifConfig({fps: 8, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===8 && gifConfig.duration===3 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600 hover:bg-purple-100'}`}>标准</button>
+                                                 <button onClick={() => setGifConfig({fps: 5, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===5 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600 hover:bg-purple-100'}`}>500K优化</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-3">
+                                            {/* FPS Slider */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-gray-500">
+                                                    <span>帧率 (流畅度)</span>
+                                                    <span className="font-mono text-purple-700">{gifConfig.fps} FPS</span>
+                                                </div>
+                                                <input type="range" min="1" max="15" step="1" value={gifConfig.fps} onChange={(e) => setGifConfig({...gifConfig, fps: parseInt(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
+                                            </div>
+
+                                            {/* Duration Slider */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-gray-500">
+                                                    <span>截取时长 (秒)</span>
+                                                    <span className="font-mono text-purple-700">{gifConfig.duration}s</span>
+                                                </div>
+                                                <input type="range" min="1" max="10" step="0.5" value={gifConfig.duration} onChange={(e) => setGifConfig({...gifConfig, duration: parseFloat(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
+                                            </div>
+
+                                            {/* Quality Slider (Mapped: 1-20 -> Real: 1-30) */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-gray-500">
+                                                    <span>画质采样 (越低越清晰)</span>
+                                                    <span className="font-mono text-purple-700">Lv.{gifConfig.quality}</span>
+                                                </div>
+                                                <input type="range" min="1" max="30" step="1" value={gifConfig.quality} onChange={(e) => setGifConfig({...gifConfig, quality: parseInt(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
+                                                <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+                                                    <span>最佳</span>
+                                                    <span>较差</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 </div>
