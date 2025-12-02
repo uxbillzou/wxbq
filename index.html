@@ -5,96 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>微信表情包/视频转GIF/九宫格切图工具</title>
     
-    <!-- 1. 引入 Tailwind CSS (样式库) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. 引入 React 和 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- 3. 引入 Babel (用于在浏览器中解析 JSX) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 4. 引入 JSZip (用于打包下载) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
-    <!-- 5. 引入 gif.js (用于生成 GIF) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
     <style>
-        /* 自定义一些动画 */
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
         .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        
-        /* 隐藏滚动条但保持滚动 */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 紧凑的 Range Input 样式 */
-        input[type=range] {
-            height: 4px;
-            border-radius: 2px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 14px;
-            width: 14px;
-            border-radius: 50%;
-            background: currentColor;
-            margin-top: -5px; 
-            cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #e5e7eb;
-            border-radius: 2px;
-        }
+        input[type=range] { height: 4px; border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: currentColor; margin-top: -5px; cursor: pointer; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
-        // 获取 React Hooks
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // --- 图标组件 ---
-        const Icon = ({ path, size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        // --- 图标组件 (修复版：不使用 Fragment 简写) ---
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
         );
 
         const Icons = {
-            ImageIcon: (props) => <Icon {...props} path={<><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></>} />,
-            VideoIcon: (props) => <Icon {...props} path={<><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></>} />,
-            GridIcon: (props) => <Icon {...props} path={<><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></>} />, 
-            Upload: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>} />,
-            Download: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>} />,
-            Settings: (props) => <Icon {...props} path={<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>} />,
-            Plus: (props) => <Icon {...props} path={<><path d="M5 12h14"/><path d="M12 5v14"/></>} />,
-            Trash2: (props) => <Icon {...props} path={<><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>} />,
-            X: (props) => <Icon {...props} path={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>} />,
-            RefreshCw: (props) => <Icon {...props} path={<><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>} />,
-            CheckCircle: (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
-            FileImage: (props) => <Icon {...props} path={<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="10" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></>} />,
-            Wand2: (props) => <Icon {...props} path={<><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></>} />,
-            Package: (props) => <Icon {...props} path={<><path d="m16.5 9.4-9-5.19"/><path d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></>} />,
-            Sliders: (props) => <Icon {...props} path={<><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></>} />,
-            Heart: (props) => <Icon {...props} path={<><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></>} />,
-            UserPlus: (props) => <Icon {...props} path={<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></>} />,
-            Palette: (props) => <Icon {...props} path={<><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></>} />
+            ImageIcon: (p) => <IconBase {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>,
+            VideoIcon: (p) => <IconBase {...p}><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></IconBase>,
+            GridIcon: (p) => <IconBase {...p}><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></IconBase>,
+            Upload: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></IconBase>,
+            Download: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>,
+            Settings: (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>,
+            Plus: (p) => <IconBase {...p}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>,
+            Trash2: (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>,
+            X: (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>,
+            RefreshCw: (p) => <IconBase {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>,
+            CheckCircle: (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>,
+            FileImage: (p) => <IconBase {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="10" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></IconBase>,
+            Wand2: (p) => <IconBase {...p}><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></IconBase>,
+            Package: (p) => <IconBase {...p}><path d="m16.5 9.4-9-5.19"/><path d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></IconBase>,
+            Sliders: (p) => <IconBase {...p}><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></IconBase>,
+            Heart: (p) => <IconBase {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>,
+            UserPlus: (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></IconBase>,
+            Palette: (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>
         };
 
-        // --- 主组件 ---
         const App = () => {
             const [items, setItems] = useState([]);
+            const [mode, setMode] = useState('static'); // 'static' | 'dynamic' | 'slice'
             
-            // 模式状态：'static' | 'dynamic' | 'slice'
-            const [mode, setMode] = useState('static');
-
             // 设置状态
             const [targetSize, setTargetSize] = useState({ w: 240, h: 240 });
             const [quality, setQuality] = useState(0.9);
@@ -105,7 +73,7 @@
             // GIF 独立配置
             const [gifConfig, setGifConfig] = useState({
                 fps: 8,
-                quality: 10, // gif.js 1-30, lower is better
+                quality: 10,
                 duration: 3
             });
 
@@ -137,57 +105,49 @@
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
-            // --- 专门处理切图（图片） ---
+            // --- 切图预处理：生成任务列表 ---
+            // 注意：这里只生成“待处理”任务，包含切片位置信息，具体的渲染和背景处理统一由 processItem 完成
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const img = new Image();
-                        img.src = e.target.result;
-                        img.onload = () => {
-                            // 逻辑修正：为了支持背景处理，我们需要计算“包含 (Contain)”的布局
-                            // 虚拟正方形尺寸
-                            const size = Math.max(img.width, img.height);
-                            // 图片在虚拟正方形中的偏移
-                            const offsetX = (size - img.width) / 2;
-                            const offsetY = (size - img.height) / 2;
-                            
-                            const pieceSize = size / 3;
-                            const newItems = [];
-                            
-                            for (let row = 0; row < 3; row++) {
-                                for (let col = 0; col < 3; col++) {
-                                    const index = row * 3 + col + 1;
-                                    newItems.push({
-                                        id: generateId(),
-                                        file: null,
-                                        originalUrl: img.src, // 复用原图 URL
-                                        processedUrl: null,
-                                        size: 0,
-                                        status: 'pending', // 设为 pending 以便 processItem 处理背景
-                                        name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
-                                        type: 'image',
-                                        // 存储切片布局信息
-                                        sliceInfo: {
-                                            cellX: col * pieceSize,
-                                            cellY: row * pieceSize,
-                                            cellSize: pieceSize,
-                                            imgX: offsetX,
-                                            imgY: offsetY,
-                                            imgW: img.width,
-                                            imgH: img.height
-                                        }
-                                    });
-                                }
+                    const imgUrl = URL.createObjectURL(file);
+                    const img = new Image();
+                    img.src = imgUrl;
+                    img.onload = () => {
+                        const size = Math.max(img.width, img.height); // 虚拟正方形边长 (取长边)
+                        const offsetX = (size - img.width) / 2;
+                        const offsetY = (size - img.height) / 2;
+                        const pieceSize = size / 3;
+                        const newItems = [];
+                        
+                        for (let row = 0; row < 3; row++) {
+                            for (let col = 0; col < 3; col++) {
+                                const index = row * 3 + col + 1;
+                                newItems.push({
+                                    id: generateId(),
+                                    file: null,
+                                    originalUrl: imgUrl, // 复用原图 URL
+                                    processedUrl: null,
+                                    size: 0,
+                                    status: 'pending',
+                                    name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
+                                    type: 'image',
+                                    sliceInfo: { // 关键：存储布局信息
+                                        cellX: col * pieceSize,
+                                        cellY: row * pieceSize,
+                                        cellSize: pieceSize,
+                                        imgX: offsetX,
+                                        imgY: offsetY,
+                                        imgW: img.width,
+                                        imgH: img.height
+                                    }
+                                });
                             }
-                            resolve(newItems);
-                        };
+                        }
+                        resolve(newItems);
                     };
-                    reader.readAsDataURL(file);
                 });
             };
 
-            // --- 专门处理切视频（生成9个GIF） ---
             const processSliceVideo = async (file) => {
                 return new Promise((resolve) => {
                     const videoUrl = URL.createObjectURL(file);
@@ -197,7 +157,6 @@
                     video.muted = true;
                     
                     video.onloadedmetadata = () => {
-                        // 逻辑修正：Contain 布局
                         const size = Math.max(video.videoWidth, video.videoHeight);
                         const offsetX = (size - video.videoWidth) / 2;
                         const offsetY = (size - video.videoHeight) / 2;
@@ -216,7 +175,6 @@
                                 status: 'pending',
                                 name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
                                 type: 'video',
-                                // 存储切片布局信息
                                 sliceInfo: {
                                     cellX: col * pieceSize,
                                     cellY: row * pieceSize,
@@ -234,7 +192,6 @@
             };
 
             const addFiles = async (files) => {
-                // --- 模式：九宫格切图/切视频 ---
                 if (mode === 'slice') {
                     setIsGlobalProcessing(true);
                     const validFiles = Array.from(files).filter(f => f.type.match('image.*') || f.type.match('video.*'));
@@ -243,7 +200,6 @@
                         setIsGlobalProcessing(false);
                         return;
                     }
-
                     const allNewItems = [];
                     for (const file of validFiles) {
                         if (file.type.match('image.*')) {
@@ -259,7 +215,6 @@
                     return;
                 }
 
-                // --- 模式：静态/动态 ---
                 const newItems = Array.from(files)
                 .filter(file => {
                     if (mode === 'static') return file.type.match('image.*');
@@ -269,7 +224,7 @@
                 .map(file => ({
                     id: generateId(),
                     file,
-                    originalUrl: null,
+                    originalUrl: URL.createObjectURL(file), // 使用 ObjectURL 优化大文件
                     processedUrl: null,
                     size: 0,
                     status: 'pending',
@@ -281,18 +236,7 @@
                     if (files.length > 0) alert(mode === 'static' ? '请上传图片文件' : '请上传视频文件');
                     return;
                 }
-
                 setItems(prev => [...prev, ...newItems]);
-                
-                newItems.forEach(item => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        setItems(prev => prev.map(i => 
-                        i.id === item.id ? { ...i, originalUrl: e.target.result } : i
-                        ));
-                    };
-                    reader.readAsDataURL(item.file);
-                });
             };
 
             const handleDrop = (e) => {
@@ -300,34 +244,33 @@
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            // 核心绘制逻辑 (支持普通裁剪和九宫格切片)
+            // --- 核心绘制逻辑 (含切片计算 & 背景填充) ---
             const drawFrame = (ctx, source, width, height, color, removeBg, tolerance, sliceInfo) => {
-                // 1. 清空并填充背景
+                // 1. 清空画布
                 ctx.clearRect(0, 0, width, height);
+                
+                // 2. 填充背景 (透明时不填，否则填颜色)
                 if (color !== 'transparent') {
                     ctx.fillStyle = color;
                     ctx.fillRect(0, 0, width, height);
                 }
 
                 if (sliceInfo) {
-                    // --- 切片模式 (Contain 逻辑) ---
-                    // 我们要绘制的是：虚拟正方形中 (cellX, cellY, cellSize) 这一块区域
-                    // 视频/图片位于虚拟正方形的 (imgX, imgY)
-                    // 这是一个坐标映射问题。
-                    // 目标 Canvas 尺寸为 width x height
+                    // --- 切片模式：坐标映射逻辑 ---
+                    // 目标 Canvas (width x height) 对应切片区域 (cellX, cellY, cellSize)
                     // 缩放比例
                     const scale = width / sliceInfo.cellSize;
                     
-                    // 计算源对象相对于目标 Canvas 的绘制位置
-                    // 目标X = (源X - 视窗X) * 缩放
-                    const dx = ( (sliceInfo.imgX || sliceInfo.videoX) - sliceInfo.cellX ) * scale;
-                    const dy = ( (sliceInfo.imgY || sliceInfo.videoY) - sliceInfo.cellY ) * scale;
-                    const dw = (sliceInfo.imgW || sliceInfo.videoW) * scale;
-                    const dh = (sliceInfo.imgH || sliceInfo.videoH) * scale;
+                    // 计算源图像在目标 Canvas 上的位置
+                    // 目标X = (源图在虚拟正方形中的X - 切片在虚拟正方形中的X) * 缩放
+                    const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
+                    const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
+                    const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
+                    const dh = (sliceInfo.imgH ?? sliceInfo.videoH) * scale;
 
                     ctx.drawImage(source, dx, dy, dw, dh);
                 } else {
-                    // --- 普通模式 (Contain 逻辑) ---
+                    // --- 普通模式：Contain 居中 ---
                     const srcW = source.videoWidth || source.width;
                     const srcH = source.videoHeight || source.height;
                     const scale = Math.min(width / srcW, height / srcH);
@@ -338,7 +281,8 @@
                     ctx.drawImage(source, x, y, w, h);
                 }
 
-                // 智能去底
+                // 3. 智能去底 (像素操作)
+                // 切片模式下如果背景复杂，去底可能效果不好，但此处允许执行
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -358,10 +302,9 @@
             const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl || item.status === 'done') return item; 
 
-                // --- 视频处理逻辑 ---
+                // --- 视频处理 ---
                 if (item.type === 'video') {
                     if (!workerUrl) return { ...item, status: 'error' };
-                    
                     return new Promise((resolve) => {
                         const video = document.createElement('video');
                         video.src = item.originalUrl;
@@ -372,7 +315,6 @@
                             const fps = currentGifConfig.fps;
                             const maxDuration = currentGifConfig.duration;
                             const gifQuality = currentGifConfig.quality;
-
                             const duration = Math.min(video.duration, maxDuration);
                             const interval = 1 / fps;
                             let currentTime = 0;
@@ -384,7 +326,7 @@
                                 height: height,
                                 workerScript: workerUrl,
                                 repeat: 0,
-                                background: color === 'white' ? '#ffffff' : undefined,
+                                background: color === 'transparent' ? 0x00000000 : null, // gif.js 只能设透明或不处理
                                 transparent: color === 'transparent' ? 0x00000000 : null
                             });
 
@@ -402,7 +344,6 @@
                             };
 
                             video.onseeked = () => {
-                                // 传递 item.sliceInfo 参数
                                 drawFrame(ctx, video, width, height, color, removeBg, tolerance, item.sliceInfo);
                                 gif.addFrame(ctx, {copy: true, delay: interval * 1000});
                                 currentTime += interval;
@@ -424,7 +365,7 @@
                     });
                 }
 
-                // --- 图片处理逻辑 ---
+                // --- 图片处理 ---
                 return new Promise((resolve) => {
                     const img = new Image();
                     img.src = item.originalUrl;
@@ -450,6 +391,7 @@
                 });
             }, []);
 
+            // 批量处理队列
             useEffect(() => {
                 const processQueue = async () => {
                     const itemsToProcess = items.filter(item => item.originalUrl && item.status === 'pending');
@@ -458,7 +400,6 @@
                         const processedResults = await Promise.all(
                             itemsToProcess.map(item => processItem(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig))
                         );
-                        
                         setItems(prev => prev.map(prevItem => {
                             const processed = processedResults.find(p => p.id === prevItem.id);
                             return processed || prevItem;
@@ -469,11 +410,10 @@
                 processQueue();
             }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
-            // 所有模式下，当设置改变时，都重置为 pending 以便重新生成 (支持实时切图背景修改)
+            // 设置变更触发重新处理
             useEffect(() => {
                setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
             }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig]);
-
 
             const formatSize = (bytes) => {
                 if (bytes === 0) return '...';
@@ -483,9 +423,7 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             };
 
-            const removeItem = (id) => {
-                setItems(prev => prev.filter(item => item.id !== id));
-            };
+            const removeItem = (id) => setItems(prev => prev.filter(item => item.id !== id));
 
             const removeAll = () => {
                 if (clearConfirm) {
@@ -537,54 +475,10 @@
                 setIsZipping(false);
             };
 
-            // Mode 切换器组件
-            const ModeSwitcher = () => (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <button 
-                        onClick={() => { setMode('static'); setRemoveWhiteBg(false); }}
-                        className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === 'static' ? 'border-green-500 bg-green-50 text-green-700 shadow-md ring-2 ring-green-500 ring-offset-2' : 'border-gray-200 bg-white text-gray-500 hover:border-green-200 hover:bg-gray-50'}`}
-                    >
-                        <div className={`p-2 rounded-full ${mode === 'static' ? 'bg-green-200' : 'bg-gray-100 group-hover:bg-white'}`}>
-                            <Icons.ImageIcon size={24} className={mode === 'static' ? 'text-green-700' : 'text-gray-400'} />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-bold text-base">静态表情</div>
-                            <div className="text-[10px] opacity-70">JPG / PNG</div>
-                        </div>
-                    </button>
-                    
-                    <button 
-                        onClick={() => { setMode('dynamic'); setRemoveWhiteBg(false); }}
-                        className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === 'dynamic' ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-500 ring-offset-2' : 'border-gray-200 bg-white text-gray-500 hover:border-purple-200 hover:bg-gray-50'}`}
-                    >
-                        <div className={`p-2 rounded-full ${mode === 'dynamic' ? 'bg-purple-200' : 'bg-gray-100 group-hover:bg-white'}`}>
-                            <Icons.VideoIcon size={24} className={mode === 'dynamic' ? 'text-purple-700' : 'text-gray-400'} />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-bold text-base">动态表情</div>
-                            <div className="text-[10px] opacity-70">视频转GIF</div>
-                        </div>
-                    </button>
-
-                    <button 
-                        onClick={() => { setMode('slice'); setRemoveWhiteBg(false); }}
-                        className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === 'slice' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md ring-2 ring-blue-500 ring-offset-2' : 'border-gray-200 bg-white text-gray-500 hover:border-blue-200 hover:bg-gray-50'}`}
-                    >
-                        <div className={`p-2 rounded-full ${mode === 'slice' ? 'bg-blue-200' : 'bg-gray-100 group-hover:bg-white'}`}>
-                            <Icons.GridIcon size={24} className={mode === 'slice' ? 'text-blue-700' : 'text-gray-400'} />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-bold text-base">九宫格切图</div>
-                            <div className="text-[10px] opacity-70">图片/视频 1变9</div>
-                        </div>
-                    </button>
-                </div>
-            );
-
-            // 动态主题色
+            // UI 辅助变量
             const themeColor = mode === 'static' ? 'green' : (mode === 'dynamic' ? 'purple' : 'blue');
-            const themeBorderHover = mode === 'static' ? 'hover:border-green-400 hover:bg-green-50' : (mode === 'dynamic' ? 'hover:border-purple-400 hover:bg-purple-50' : 'hover:border-blue-400 hover:bg-blue-50');
             const themeIconBg = mode === 'static' ? 'bg-green-100 text-green-600' : (mode === 'dynamic' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600');
+            const themeBorderHover = `hover:border-${themeColor}-400 hover:bg-${themeColor}-50`;
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
@@ -594,240 +488,215 @@
                         <p className="text-gray-500">快速制作微信表情包 · 本地处理保护隐私</p>
                     </header>
 
-                    <ModeSwitcher />
+                    {/* Mode Switcher */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        {['static', 'dynamic', 'slice'].map(m => (
+                            <button 
+                                key={m}
+                                onClick={() => { setMode(m); setRemoveWhiteBg(false); }}
+                                className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === m 
+                                    ? `border-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-50 text-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-700 shadow-md ring-2 ring-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 ring-offset-2` 
+                                    : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
+                            >
+                                <div className={`p-2 rounded-full ${mode === m ? `bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-200` : 'bg-gray-100'}`}>
+                                    {m === 'static' && <Icons.ImageIcon size={24} />}
+                                    {m === 'dynamic' && <Icons.VideoIcon size={24} />}
+                                    {m === 'slice' && <Icons.GridIcon size={24} />}
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-bold text-base">
+                                        {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '九宫格切图'}
+                                    </div>
+                                    <div className="text-[10px] opacity-70">
+                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 1变9'}
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div className="lg:col-span-4 space-y-6">
-                        <div 
-                        className={`border-4 border-dashed rounded-3xl bg-white p-8 text-center transition-all cursor-pointer group shadow-sm relative overflow-hidden border-gray-200 ${themeBorderHover}`}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={handleDrop}
-                        onClick={() => document.getElementById('fileInput').click()}
-                        >
-                        <input 
-                            type="file" 
-                            id="fileInput" 
-                            className="hidden" 
-                            accept={mode === 'static' ? "image/*" : (mode === 'dynamic' ? "video/*" : "image/*,video/*")} 
-                            multiple 
-                            onChange={(e) => {if(e.target.files) addFiles(e.target.files); e.target.value='';}} 
-                        />
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform ${themeIconBg}`}>
-                            {mode === 'static' && <Icons.Plus size={32} />}
-                            {mode === 'dynamic' && <Icons.VideoIcon size={32} />}
-                            {mode === 'slice' && <Icons.GridIcon size={32} />}
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                            {mode === 'static' && '点击添加图片'}
-                            {mode === 'dynamic' && '点击添加视频'}
-                            {mode === 'slice' && '点击添加素材(图/视频)'}
-                        </h3>
-                        <p className="text-gray-400 text-xs">
-                            {mode === 'static' && '支持批量 JPG, PNG, WEBP'}
-                            {mode === 'dynamic' && '支持 MP4, MOV (自动转GIF)'}
-                            {mode === 'slice' && '支持图片和视频 自动切9份'}
-                        </p>
-                        </div>
-
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-lg flex items-center gap-2"><Icons.Settings size={20} className="text-gray-400" />参数设置</h3>
-                            </div>
-                            <div className="space-y-6">
-                                <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {sizePresets.map(preset => (
-                                    <button key={preset.label} onClick={() => setTargetSize({ w: preset.w, h: preset.h })} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? `bg-${themeColor}-500 text-white border-${themeColor}-500 shadow-md` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{preset.label}</button>
-                                    ))}
+                        {/* 左侧控制区 */}
+                        <div className="lg:col-span-4 space-y-6">
+                            <div 
+                                className={`border-4 border-dashed rounded-3xl bg-white p-8 text-center transition-all cursor-pointer group shadow-sm relative overflow-hidden border-gray-200 ${themeBorderHover}`}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={handleDrop}
+                                onClick={() => document.getElementById('fileInput').click()}
+                            >
+                                <input 
+                                    type="file" 
+                                    id="fileInput" 
+                                    className="hidden" 
+                                    accept={mode === 'static' ? "image/*" : (mode === 'dynamic' ? "video/*" : "image/*,video/*")} 
+                                    multiple 
+                                    onChange={(e) => {if(e.target.files) addFiles(e.target.files); e.target.value='';}} 
+                                />
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform ${themeIconBg}`}>
+                                    {mode === 'static' && <Icons.Plus size={32} />}
+                                    {mode === 'dynamic' && <Icons.VideoIcon size={32} />}
+                                    {mode === 'slice' && <Icons.GridIcon size={32} />}
                                 </div>
-                                <div className="mt-2 text-xs text-gray-400 text-right">当前: {targetSize.w} x {targetSize.h} px</div>
-                                </div>
-                                
-                                {mode === 'slice' && (
-                                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-xs">
-                                        <p className="font-bold mb-1">九宫格模式说明：</p>
-                                        <ul className="list-disc pl-4 space-y-1">
-                                            <li>将自动选取图片中心的正方形区域</li>
-                                            <li>智能切割为 3x3 共 9 个文件</li>
-                                            <li>视频会自动转换为 9 个同步的 GIF</li>
-                                        </ul>
-                                    </div>
-                                )}
-
-                                <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
-                                <div className="flex gap-2 mb-3">
-                                    <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明边缘</button>
-                                    <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色边缘</button>
-                                    <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
-                                        <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
-                                        <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
-                                        <span className="flex items-center gap-1"><Icons.Palette size={12}/>自定义</span>
-                                    </label>
-                                </div>
-                                
-                                {(mode === 'static' || mode === 'dynamic') && (
-                                    <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
-                                        <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeWhiteBg ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>{removeWhiteBg && <Icons.CheckCircle size={14} className="text-white" />}</div>
-                                            <input type="checkbox" className="hidden" checked={removeWhiteBg} onChange={(e) => setRemoveWhiteBg(e.target.checked)} />
-                                            <span className={`text-sm font-medium ${removeWhiteBg ? 'text-blue-700' : 'text-gray-600'}`}>去除白色背景</span>
-                                        </label>
-                                        <Icons.Wand2 size={16} className={`${removeWhiteBg ? 'text-blue-500' : 'text-gray-400'}`} />
-                                        </div>
-                                        {removeWhiteBg && (
-                                        <div className="mt-2 pt-2 border-t border-blue-100">
-                                            <div className="flex justify-between text-xs text-blue-600 mb-1"><span>强度:弱</span><span>强</span></div>
-                                            <input type="range" min="1" max="100" value={bgTolerance} onChange={(e) => setBgTolerance(parseInt(e.target.value))} className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                                        </div>
-                                        )}
-                                    </div>
-                                )}
-                                </div>
-                                
-                                {(mode === 'dynamic' || mode === 'slice') && (
-                                    <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-2 text-purple-800">
-                                                <Icons.Sliders size={16} />
-                                                <h4 className="font-bold text-sm">GIF 压缩设置</h4>
-                                            </div>
-                                            <div className="flex gap-1.5">
-                                                 <button onClick={() => setGifConfig({fps: 8, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===8 && gifConfig.duration===3 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600 hover:bg-purple-100'}`}>标准</button>
-                                                 <button onClick={() => setGifConfig({fps: 5, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===5 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600 hover:bg-purple-100'}`}>500K优化</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="space-y-3">
-                                            {/* FPS Slider */}
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between text-xs text-gray-500">
-                                                    <span>帧率 (流畅度)</span>
-                                                    <span className="font-mono text-purple-700">{gifConfig.fps} FPS</span>
-                                                </div>
-                                                <input type="range" min="1" max="15" step="1" value={gifConfig.fps} onChange={(e) => setGifConfig({...gifConfig, fps: parseInt(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
-                                            </div>
-
-                                            {/* Duration Slider */}
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between text-xs text-gray-500">
-                                                    <span>截取时长 (秒)</span>
-                                                    <span className="font-mono text-purple-700">{gifConfig.duration}s</span>
-                                                </div>
-                                                <input type="range" min="1" max="10" step="0.5" value={gifConfig.duration} onChange={(e) => setGifConfig({...gifConfig, duration: parseFloat(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
-                                            </div>
-
-                                            {/* Quality Slider (Mapped: 1-20 -> Real: 1-30) */}
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between text-xs text-gray-500">
-                                                    <span>画质采样 (越低越清晰)</span>
-                                                    <span className="font-mono text-purple-700">Lv.{gifConfig.quality}</span>
-                                                </div>
-                                                <input type="range" min="1" max="30" step="1" value={gifConfig.quality} onChange={(e) => setGifConfig({...gifConfig, quality: parseInt(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-500" />
-                                                <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
-                                                    <span>最佳</span>
-                                                    <span>较差</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                </div>
-
-                                {items.length > 0 && (
-                                <div className="pt-4 border-t border-gray-100 space-y-3">
-                                    <button onClick={downloadAllZip} disabled={isZipping} className={`w-full py-3 text-white rounded-xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isZipping ? 'bg-gray-400 cursor-not-allowed' : `bg-${themeColor}-600 hover:bg-${themeColor}-700`}`}>{isZipping ? <Icons.RefreshCw className="animate-spin" size={18}/> : <Icons.Package size={18} />}{isZipping ? '正在打包...' : `打包下载全部 (${items.length})`}</button>
-                                    <button onClick={removeAll} className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors ${clearConfirm ? 'bg-red-500 text-white hover:bg-red-600 shadow-md' : 'text-red-500 hover:bg-red-50'}`}><Icons.Trash2 size={16} />{clearConfirm ? '确定清空？' : '清空列表'}</button>
-                                </div>
-                                )}
-                            </div>
-                        </div>
-                    
-
-                    <div className="lg:col-span-8">
-                        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 min-h-[500px]">
-                            <div className="flex justify-between items-center mb-6">
-                            <h3 className={`font-bold text-gray-800 flex items-center gap-2`}><Icons.FileImage size={20} className={`text-${themeColor}-500`}/>处理结果 ({items.length})</h3>
-                            {isGlobalProcessing && <span className={`text-sm flex items-center gap-2 animate-pulse text-${themeColor}-600`}><Icons.RefreshCw size={14} className="animate-spin"/>处理中...</span>}
+                                <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                                    {mode === 'slice' ? '点击添加素材(图/视频)' : `点击添加${mode === 'static' ? '图片' : '视频'}`}
+                                </h3>
+                                <p className="text-gray-400 text-xs">
+                                    {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : mode === 'dynamic' ? '支持 MP4, MOV' : '自动裁剪正方形并切成9张'}
+                                </p>
                             </div>
 
-                            {items.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {items.map(item => (
-                                <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
-                                    <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Icons.X size={14} /></button>
-                                    <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100 relative" style={{ aspectRatio: `${targetSize.w}/${targetSize.h}` }}>
-                                    {item.processedUrl ? (
-                                        <img src={item.processedUrl} alt="processed" className="max-w-full max-h-full object-contain" />
-                                    ) : (
-                                        <div className="flex flex-col items-center">
-                                            <Icons.RefreshCw className="animate-spin text-gray-400 mb-2" />
-                                            {item.type === 'video' && <span className="text-xs text-gray-400">转换中...</span>}
+                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg flex items-center gap-2"><Icons.Settings size={20} className="text-gray-400" />参数设置</h3>
+                                </div>
+                                <div className="space-y-6">
+                                    {/* 尺寸选择 */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {sizePresets.map(preset => (
+                                                <button 
+                                                    key={preset.label} 
+                                                    onClick={() => setTargetSize({ w: preset.w, h: preset.h })} 
+                                                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? `bg-${themeColor}-500 text-white border-${themeColor}-500 shadow-md` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* 背景处理 */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
+                                        <div className="flex gap-2 mb-3">
+                                            <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}>
+                                                <div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明
+                                            </button>
+                                            <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
+                                                <div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色
+                                            </button>
+                                            <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
+                                                <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
+                                                <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
+                                                <span className="flex items-center gap-1"><Icons.Palette size={12}/>自定义</span>
+                                            </label>
+                                        </div>
+
+                                        {/* 去除背景开关 */}
+                                        <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
+                                            <div className="flex items-center justify-between">
+                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeWhiteBg ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>{removeWhiteBg && <Icons.CheckCircle size={14} className="text-white" />}</div>
+                                                    <input type="checkbox" className="hidden" checked={removeWhiteBg} onChange={(e) => setRemoveWhiteBg(e.target.checked)} />
+                                                    <span className={`text-sm font-medium ${removeWhiteBg ? 'text-blue-700' : 'text-gray-600'}`}>去除白色背景</span>
+                                                </label>
+                                                <Icons.Wand2 size={16} className={`${removeWhiteBg ? 'text-blue-500' : 'text-gray-400'}`} />
+                                            </div>
+                                            {removeWhiteBg && (
+                                                <div className="mt-2 pt-2 border-t border-blue-100">
+                                                    <div className="flex justify-between text-xs text-blue-600 mb-1"><span>强度:弱</span><span>强</span></div>
+                                                    <input type="range" min="1" max="100" value={bgTolerance} onChange={(e) => setBgTolerance(parseInt(e.target.value))} className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* GIF 压缩配置 */}
+                                    {(mode === 'dynamic' || mode === 'slice') && (
+                                        <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex items-center gap-2 text-purple-800">
+                                                    <Icons.Sliders size={16} />
+                                                    <h4 className="font-bold text-sm">GIF 压缩设置</h4>
+                                                </div>
+                                                <div className="flex gap-1.5">
+                                                    <button onClick={() => setGifConfig({fps: 8, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===8 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600'}`}>标准</button>
+                                                    <button onClick={() => setGifConfig({fps: 5, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===5 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600'}`}>优化</button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-xs text-gray-500"><span>帧率</span><span className="text-purple-700">{gifConfig.fps} FPS</span></div>
+                                                <input type="range" min="1" max="15" value={gifConfig.fps} onChange={(e) => setGifConfig({...gifConfig, fps: parseInt(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg accent-purple-500" />
+                                                <div className="flex justify-between text-xs text-gray-500"><span>时长</span><span className="text-purple-700">{gifConfig.duration}s</span></div>
+                                                <input type="range" min="1" max="10" step="0.5" value={gifConfig.duration} onChange={(e) => setGifConfig({...gifConfig, duration: parseFloat(e.target.value)})} className="w-full h-1 bg-purple-200 rounded-lg accent-purple-500" />
+                                            </div>
                                         </div>
                                     )}
-                                    {item.type === 'video' && item.processedUrl && <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>}
-                                    {/* 显示序号，如果是切图模式 */}
-                                    {mode === 'slice' && item.name.match(/_(\d+)\.(png|gif)$/) && (
-                                        <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
-                                            {item.name.match(/_(\d+)\.(png|gif)$/)[1]}
+
+                                    {/* 批量操作按钮 */}
+                                    {items.length > 0 && (
+                                        <div className="pt-4 border-t border-gray-100 space-y-3">
+                                            <button onClick={downloadAllZip} disabled={isZipping} className={`w-full py-3 text-white rounded-xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isZipping ? 'bg-gray-400' : `bg-${themeColor}-600 hover:bg-${themeColor}-700`}`}>
+                                                {isZipping ? <Icons.RefreshCw className="animate-spin" size={18}/> : <Icons.Package size={18} />}
+                                                {isZipping ? '正在打包...' : `打包下载全部 (${items.length})`}
+                                            </button>
+                                            <button onClick={removeAll} className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors ${clearConfirm ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-50'}`}>
+                                                <Icons.Trash2 size={16} />{clearConfirm ? '确定清空？' : '清空列表'}
+                                            </button>
                                         </div>
                                     )}
-                                    </div>
-                                    <div className="space-y-1">
-                                    <div className="flex justify-between items-center text-xs text-gray-500"><span className="truncate max-w-[80px]" title={item.name}>{item.name}</span><span className={`${item.size > 1024*1024 ? 'text-red-500 font-bold' : `text-${themeColor}-600`}`}>{formatSize(item.size)}</span></div>
-                                    <button onClick={() => downloadItem(item)} disabled={!item.processedUrl} className="w-full mt-2 py-1.5 bg-white border border-gray-200 hover:border-green-500 hover:text-green-600 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"><Icons.Download size={12} />下载</button>
-                                    </div>
                                 </div>
-                                ))}
-                                <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] ${themeBorderHover.replace('bg-', 'text-')}`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
                             </div>
-                            ) : (
-                            <div className="h-64 flex flex-col items-center justify-center text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl"><p className="text-sm">暂无素材，请在左侧添加</p></div>
-                            )}
+                        </div>
+
+                        {/* 右侧结果区 */}
+                        <div className="lg:col-span-8">
+                            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 min-h-[500px]">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className={`font-bold text-gray-800 flex items-center gap-2`}><Icons.FileImage size={20} className={`text-${themeColor}-500`}/>处理结果 ({items.length})</h3>
+                                    {isGlobalProcessing && <span className={`text-sm flex items-center gap-2 animate-pulse text-${themeColor}-600`}><Icons.RefreshCw size={14} className="animate-spin"/>处理中...</span>}
+                                </div>
+
+                                {items.length > 0 ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {items.map(item => (
+                                            <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
+                                                <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Icons.X size={14} /></button>
+                                                <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100 relative" style={{ aspectRatio: `${targetSize.w}/${targetSize.h}` }}>
+                                                    {item.processedUrl ? (
+                                                        <img src={item.processedUrl} alt="processed" className="max-w-full max-h-full object-contain" />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center">
+                                                            <Icons.RefreshCw className="animate-spin text-gray-400 mb-2" />
+                                                            <span className="text-xs text-gray-400">{item.type==='video'?'转换中...':'处理中...'}</span>
+                                                        </div>
+                                                    )}
+                                                    {item.type === 'video' && item.processedUrl && <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>}
+                                                    {mode === 'slice' && item.name.match(/_(\d+)\.(png|gif)$/) && (
+                                                        <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
+                                                            {item.name.match(/_(\d+)\.(png|gif)$/)[1]}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between items-center text-xs text-gray-500"><span className="truncate max-w-[80px]" title={item.name}>{item.name}</span><span className={`${item.size > 1024*1024 ? 'text-red-500 font-bold' : `text-${themeColor}-600`}`}>{formatSize(item.size)}</span></div>
+                                                    <button onClick={() => downloadItem(item)} disabled={!item.processedUrl} className="w-full mt-2 py-1.5 bg-white border border-gray-200 hover:border-green-500 hover:text-green-600 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"><Icons.Download size={12} />下载</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
+                                    </div>
+                                ) : (
+                                    <div className="h-64 flex flex-col items-center justify-center text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl"><p className="text-sm">暂无素材，请在左侧添加</p></div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                    </div>
-                    
-                    {/* 底部作者区域 */}
+
                     <footer className="mt-16 pt-8 border-t border-gray-200">
                         <div className="flex flex-col md:flex-row justify-center items-center gap-8 text-center md:text-left">
                             <div className="flex flex-col items-center gap-2">
                                 <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm">
-                                    {/* 赞赏二维码图片，如果加载失败会显示文件名 */}
-                                    <img 
-                                        src="zanshang.png" 
-                                        alt="赞赏二维码" 
-                                        className="w-full h-full object-contain"
-                                        onError={(e) => {
-                                            e.target.style.display = 'none';
-                                            e.target.parentNode.classList.add('bg-gray-50');
-                                            e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="m16 16-2.5-2.5"/></svg><span class="text-[10px]">zanshang.png</span></div>';
-                                        }}
-                                    />
+                                    <img src="zanshang.png" alt="赞赏二维码" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.classList.add('bg-gray-50'); e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><span class="text-[10px]">zanshang.png</span></div>'; }} />
                                 </div>
-                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1">
-                                    <Icons.Heart size={14} className="text-pink-500 fill-pink-500"/> 赞赏作者
-                                </span>
+                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1"><Icons.Heart size={14} className="text-pink-500 fill-pink-500"/> 赞赏作者</span>
                             </div>
                             <div className="flex flex-col items-center gap-2">
                                 <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm">
-                                    {/* 添加作者图片，如果加载失败会显示文件名 */}
-                                    <img 
-                                        src="add.png" 
-                                        alt="添加作者" 
-                                        className="w-full h-full object-contain" 
-                                        onError={(e) => {
-                                            e.target.style.display = 'none';
-                                            e.target.parentNode.classList.add('bg-gray-50');
-                                            e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="m16 16-2.5-2.5"/></svg><span class="text-[10px]">add.png</span></div>';
-                                        }}
-                                    />
+                                    <img src="add.png" alt="添加作者" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.classList.add('bg-gray-50'); e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><span class="text-[10px]">add.png</span></div>'; }} />
                                 </div>
-                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1">
-                                    <Icons.UserPlus size={14} className="text-blue-500"/> 添加作者
-                                </span>
+                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1"><Icons.UserPlus size={14} className="text-blue-500"/> 添加作者</span>
                             </div>
                         </div>
                         <div className="mt-8 text-center text-gray-400 text-xs">
