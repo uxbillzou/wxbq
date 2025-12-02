@@ -82,7 +82,10 @@
             FileImage: (props) => <Icon {...props} path={<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="10" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></>} />,
             Wand2: (props) => <Icon {...props} path={<><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></>} />,
             Package: (props) => <Icon {...props} path={<><path d="m16.5 9.4-9-5.19"/><path d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></>} />,
-            Sliders: (props) => <Icon {...props} path={<><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></>} />
+            Sliders: (props) => <Icon {...props} path={<><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></>} />,
+            Heart: (props) => <Icon {...props} path={<><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></>} />,
+            UserPlus: (props) => <Icon {...props} path={<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></>} />,
+            Palette: (props) => <Icon {...props} path={<><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></>} />
         };
 
         // --- 主组件 ---
@@ -135,7 +138,6 @@
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
             // --- 专门处理切图（图片） ---
-            // 修正：现在返回 pending 状态，包含切片布局信息，由 processItem 统一渲染
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const reader = new FileReader();
@@ -336,8 +338,7 @@
                     ctx.drawImage(source, x, y, w, h);
                 }
 
-                // 智能去底 (仅在普通模式或明确要求时开启，且背景不为白色填充时效果最好)
-                // 切图模式下通常不建议去底，除非用户坚持，这里保留逻辑
+                // 智能去底
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -659,9 +660,14 @@
                                 <div className="flex gap-2 mb-3">
                                     <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明边缘</button>
                                     <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色边缘</button>
+                                    <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
+                                        <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
+                                        <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
+                                        <span className="flex items-center gap-1"><Icons.Palette size={12}/>自定义</span>
+                                    </label>
                                 </div>
                                 
-                                {mode === 'static' && (
+                                {(mode === 'static' || mode === 'dynamic') && (
                                     <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
                                         <div className="flex items-center justify-between">
                                         <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -783,6 +789,51 @@
                         </div>
                     </div>
                     </div>
+                    
+                    {/* 底部作者区域 */}
+                    <footer className="mt-16 pt-8 border-t border-gray-200">
+                        <div className="flex flex-col md:flex-row justify-center items-center gap-8 text-center md:text-left">
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm">
+                                    {/* 赞赏二维码图片，如果加载失败会显示文件名 */}
+                                    <img 
+                                        src="zanshang.png" 
+                                        alt="赞赏二维码" 
+                                        className="w-full h-full object-contain"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentNode.classList.add('bg-gray-50');
+                                            e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="m16 16-2.5-2.5"/></svg><span class="text-[10px]">zanshang.png</span></div>';
+                                        }}
+                                    />
+                                </div>
+                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1">
+                                    <Icons.Heart size={14} className="text-pink-500 fill-pink-500"/> 赞赏作者
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm">
+                                    {/* 添加作者图片，如果加载失败会显示文件名 */}
+                                    <img 
+                                        src="add.png" 
+                                        alt="添加作者" 
+                                        className="w-full h-full object-contain" 
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentNode.classList.add('bg-gray-50');
+                                            e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="m16 16-2.5-2.5"/></svg><span class="text-[10px]">add.png</span></div>';
+                                        }}
+                                    />
+                                </div>
+                                <span className="text-sm font-bold text-gray-600 flex items-center gap-1">
+                                    <Icons.UserPlus size={14} className="text-blue-500"/> 添加作者
+                                </span>
+                            </div>
+                        </div>
+                        <div className="mt-8 text-center text-gray-400 text-xs">
+                            <p>本工具纯前端运行，您的图片不会上传到任何服务器。</p>
+                        </div>
+                    </footer>
                 </div>
                 </div>
             );
