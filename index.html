@@ -128,96 +128,129 @@
 
             const sizePresets = [
                 { w: 50, h: 50, label: '50x50 (图标)' },
-                { w: 120, h: 120, label: '120x120' },
                 { w: 240, h: 240, label: '240x240 (标准)' },
-                { w: 300, h: 300, label: '300x300' },
                 { w: 750, h: 400, label: '750x400 (横幅)' },
             ];
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
-            // --- 专门处理切图的函数 ---
-            const processSliceUpload = async (file) => {
+            // --- 专门处理切图（图片） ---
+            // 修正：现在返回 pending 状态，包含切片布局信息，由 processItem 统一渲染
+            const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const img = new Image();
                         img.src = e.target.result;
                         img.onload = () => {
-                            // 1. 计算正方形裁剪区域 (Center Crop)
-                            const size = Math.min(img.width, img.height);
-                            const startX = (img.width - size) / 2;
-                            const startY = (img.height - size) / 2;
+                            // 逻辑修正：为了支持背景处理，我们需要计算“包含 (Contain)”的布局
+                            // 虚拟正方形尺寸
+                            const size = Math.max(img.width, img.height);
+                            // 图片在虚拟正方形中的偏移
+                            const offsetX = (size - img.width) / 2;
+                            const offsetY = (size - img.height) / 2;
                             
-                            // 2. 切割参数
                             const pieceSize = size / 3;
                             const newItems = [];
                             
-                            // 3. 循环生成 9 张图
                             for (let row = 0; row < 3; row++) {
                                 for (let col = 0; col < 3; col++) {
-                                    const canvas = document.createElement('canvas');
-                                    // 切图模式下，默认输出为目标尺寸（如 240x240）以便直接做表情
-                                    // 或者保留原画质。为了表情包工具的统一性，这里使用 targetSize
-                                    canvas.width = targetSize.w;
-                                    canvas.height = targetSize.h;
-                                    const ctx = canvas.getContext('2d');
-                                    
-                                    // 绘制对应的区块
-                                    ctx.drawImage(
-                                        img, 
-                                        startX + col * pieceSize, startY + row * pieceSize, pieceSize, pieceSize, // Source
-                                        0, 0, targetSize.w, targetSize.h // Destination
-                                    );
-                                    
-                                    // 生成 blob url
-                                    canvas.toBlob((blob) => {
-                                        const index = row * 3 + col + 1;
-                                        newItems.push({
-                                            id: generateId(),
-                                            file: null, // 切图产生的无需原始File对象
-                                            originalUrl: null,
-                                            processedUrl: URL.createObjectURL(blob),
-                                            size: blob.size,
-                                            status: 'done', // 切图即处理完成
-                                            name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
-                                            type: 'image'
-                                        });
-                                        
-                                        // 当9张都处理完时resolve
-                                        if (newItems.length === 9) {
-                                            // 按顺序排序 (1-9)
-                                            newItems.sort((a, b) => {
-                                                const numA = parseInt(a.name.match(/_(\d+)\.png$/)[1]);
-                                                const numB = parseInt(b.name.match(/_(\d+)\.png$/)[1]);
-                                                return numA - numB;
-                                            });
-                                            resolve(newItems);
+                                    const index = row * 3 + col + 1;
+                                    newItems.push({
+                                        id: generateId(),
+                                        file: null,
+                                        originalUrl: img.src, // 复用原图 URL
+                                        processedUrl: null,
+                                        size: 0,
+                                        status: 'pending', // 设为 pending 以便 processItem 处理背景
+                                        name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
+                                        type: 'image',
+                                        // 存储切片布局信息
+                                        sliceInfo: {
+                                            cellX: col * pieceSize,
+                                            cellY: row * pieceSize,
+                                            cellSize: pieceSize,
+                                            imgX: offsetX,
+                                            imgY: offsetY,
+                                            imgW: img.width,
+                                            imgH: img.height
                                         }
-                                    }, 'image/png', quality);
+                                    });
                                 }
                             }
+                            resolve(newItems);
                         };
                     };
                     reader.readAsDataURL(file);
                 });
             };
 
+            // --- 专门处理切视频（生成9个GIF） ---
+            const processSliceVideo = async (file) => {
+                return new Promise((resolve) => {
+                    const videoUrl = URL.createObjectURL(file);
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.src = videoUrl;
+                    video.muted = true;
+                    
+                    video.onloadedmetadata = () => {
+                        // 逻辑修正：Contain 布局
+                        const size = Math.max(video.videoWidth, video.videoHeight);
+                        const offsetX = (size - video.videoWidth) / 2;
+                        const offsetY = (size - video.videoHeight) / 2;
+                        const pieceSize = size / 3;
+                        
+                        const newItems = [];
+                        for (let i = 0; i < 9; i++) {
+                            const row = Math.floor(i / 3);
+                            const col = i % 3;
+                            newItems.push({
+                                id: generateId(),
+                                file: file,
+                                originalUrl: videoUrl,
+                                processedUrl: null,
+                                size: 0,
+                                status: 'pending',
+                                name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
+                                type: 'video',
+                                // 存储切片布局信息
+                                sliceInfo: {
+                                    cellX: col * pieceSize,
+                                    cellY: row * pieceSize,
+                                    cellSize: pieceSize,
+                                    videoX: offsetX,
+                                    videoY: offsetY,
+                                    videoW: video.videoWidth,
+                                    videoH: video.videoHeight
+                                }
+                            });
+                        }
+                        resolve(newItems);
+                    };
+                });
+            };
+
             const addFiles = async (files) => {
-                // --- 模式：九宫格切图 ---
+                // --- 模式：九宫格切图/切视频 ---
                 if (mode === 'slice') {
                     setIsGlobalProcessing(true);
-                    const validFiles = Array.from(files).filter(f => f.type.match('image.*'));
+                    const validFiles = Array.from(files).filter(f => f.type.match('image.*') || f.type.match('video.*'));
                     if (validFiles.length === 0) {
-                        alert('切图模式仅支持图片文件');
+                        alert('请上传图片或视频文件');
                         setIsGlobalProcessing(false);
                         return;
                     }
 
                     const allNewItems = [];
                     for (const file of validFiles) {
-                        const slices = await processSliceUpload(file);
-                        allNewItems.push(...slices);
+                        if (file.type.match('image.*')) {
+                            const slices = await processSliceImage(file);
+                            allNewItems.push(...slices);
+                        } else if (file.type.match('video.*')) {
+                            const slices = await processSliceVideo(file);
+                            allNewItems.push(...slices);
+                        }
                     }
                     setItems(prev => [...prev, ...allNewItems]);
                     setIsGlobalProcessing(false);
@@ -265,24 +298,46 @@
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            // 处理单帧图像逻辑 (通用)
-            const drawFrame = (ctx, source, width, height, color, removeBg, tolerance) => {
+            // 核心绘制逻辑 (支持普通裁剪和九宫格切片)
+            const drawFrame = (ctx, source, width, height, color, removeBg, tolerance, sliceInfo) => {
+                // 1. 清空并填充背景
                 ctx.clearRect(0, 0, width, height);
                 if (color !== 'transparent') {
                     ctx.fillStyle = color;
                     ctx.fillRect(0, 0, width, height);
                 }
 
-                const srcW = source.videoWidth || source.width;
-                const srcH = source.videoHeight || source.height;
-                const scale = Math.min(width / srcW, height / srcH);
-                const w = srcW * scale;
-                const h = srcH * scale;
-                const x = (width - w) / 2;
-                const y = (height - h) / 2;
+                if (sliceInfo) {
+                    // --- 切片模式 (Contain 逻辑) ---
+                    // 我们要绘制的是：虚拟正方形中 (cellX, cellY, cellSize) 这一块区域
+                    // 视频/图片位于虚拟正方形的 (imgX, imgY)
+                    // 这是一个坐标映射问题。
+                    // 目标 Canvas 尺寸为 width x height
+                    // 缩放比例
+                    const scale = width / sliceInfo.cellSize;
+                    
+                    // 计算源对象相对于目标 Canvas 的绘制位置
+                    // 目标X = (源X - 视窗X) * 缩放
+                    const dx = ( (sliceInfo.imgX || sliceInfo.videoX) - sliceInfo.cellX ) * scale;
+                    const dy = ( (sliceInfo.imgY || sliceInfo.videoY) - sliceInfo.cellY ) * scale;
+                    const dw = (sliceInfo.imgW || sliceInfo.videoW) * scale;
+                    const dh = (sliceInfo.imgH || sliceInfo.videoH) * scale;
 
-                ctx.drawImage(source, x, y, w, h);
+                    ctx.drawImage(source, dx, dy, dw, dh);
+                } else {
+                    // --- 普通模式 (Contain 逻辑) ---
+                    const srcW = source.videoWidth || source.width;
+                    const srcH = source.videoHeight || source.height;
+                    const scale = Math.min(width / srcW, height / srcH);
+                    const w = srcW * scale;
+                    const h = srcH * scale;
+                    const x = (width - w) / 2;
+                    const y = (height - h) / 2;
+                    ctx.drawImage(source, x, y, w, h);
+                }
 
+                // 智能去底 (仅在普通模式或明确要求时开启，且背景不为白色填充时效果最好)
+                // 切图模式下通常不建议去底，除非用户坚持，这里保留逻辑
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -300,7 +355,7 @@
             };
 
             const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
-                if (!item.originalUrl || item.status === 'done') return item; // Skip done items (like slices)
+                if (!item.originalUrl || item.status === 'done') return item; 
 
                 // --- 视频处理逻辑 ---
                 if (item.type === 'video') {
@@ -346,7 +401,8 @@
                             };
 
                             video.onseeked = () => {
-                                drawFrame(ctx, video, width, height, color, removeBg, tolerance);
+                                // 传递 item.sliceInfo 参数
+                                drawFrame(ctx, video, width, height, color, removeBg, tolerance, item.sliceInfo);
                                 gif.addFrame(ctx, {copy: true, delay: interval * 1000});
                                 currentTime += interval;
                                 captureFrame();
@@ -358,7 +414,7 @@
                                     processedUrl: URL.createObjectURL(blob),
                                     size: blob.size,
                                     status: 'done',
-                                    name: item.name.replace(/\.[^/.]+$/, "") + ".gif"
+                                    name: item.name.endsWith('.gif') ? item.name : item.name.replace(/\.[^/.]+$/, "") + ".gif"
                                 });
                             });
                             captureFrame();
@@ -377,7 +433,7 @@
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         
-                        drawFrame(ctx, img, width, height, color, removeBg, tolerance);
+                        drawFrame(ctx, img, width, height, color, removeBg, tolerance, item.sliceInfo);
 
                         canvas.toBlob((blob) => {
                             resolve({
@@ -394,9 +450,6 @@
             }, []);
 
             useEffect(() => {
-                // Slice mode doesn't use this queue logic for generation, only static/dynamic do
-                if (mode === 'slice') return;
-
                 const processQueue = async () => {
                     const itemsToProcess = items.filter(item => item.originalUrl && item.status === 'pending');
                     if (itemsToProcess.length > 0) {
@@ -413,12 +466,11 @@
                     }
                 };
                 processQueue();
-            }, [items, mode, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
+            }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
-            // For Static/Dynamic modes, reset status on setting change. Slice mode ignores this.
+            // 所有模式下，当设置改变时，都重置为 pending 以便重新生成 (支持实时切图背景修改)
             useEffect(() => {
-                if (mode === 'slice') return; 
-                setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
+               setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
             }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig]);
 
 
@@ -522,7 +574,7 @@
                         </div>
                         <div className="text-left">
                             <div className="font-bold text-base">九宫格切图</div>
-                            <div className="text-[10px] opacity-70">1变9 自动切</div>
+                            <div className="text-[10px] opacity-70">图片/视频 1变9</div>
                         </div>
                     </button>
                 </div>
@@ -555,7 +607,7 @@
                             type="file" 
                             id="fileInput" 
                             className="hidden" 
-                            accept={mode === 'dynamic' ? "video/*" : "image/*"} 
+                            accept={mode === 'static' ? "image/*" : (mode === 'dynamic' ? "video/*" : "image/*,video/*")} 
                             multiple 
                             onChange={(e) => {if(e.target.files) addFiles(e.target.files); e.target.value='';}} 
                         />
@@ -567,12 +619,12 @@
                         <h3 className="text-lg font-semibold text-gray-700 mb-1">
                             {mode === 'static' && '点击添加图片'}
                             {mode === 'dynamic' && '点击添加视频'}
-                            {mode === 'slice' && '点击添加一张大图'}
+                            {mode === 'slice' && '点击添加素材(图/视频)'}
                         </h3>
                         <p className="text-gray-400 text-xs">
                             {mode === 'static' && '支持批量 JPG, PNG, WEBP'}
                             {mode === 'dynamic' && '支持 MP4, MOV (自动转GIF)'}
-                            {mode === 'slice' && '自动裁剪正方形并切成9张'}
+                            {mode === 'slice' && '支持图片和视频 自动切9份'}
                         </p>
                         </div>
 
@@ -593,16 +645,15 @@
                                 
                                 {mode === 'slice' && (
                                     <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-xs">
-                                        <p className="font-bold mb-1">切图模式说明：</p>
+                                        <p className="font-bold mb-1">九宫格模式说明：</p>
                                         <ul className="list-disc pl-4 space-y-1">
                                             <li>将自动选取图片中心的正方形区域</li>
-                                            <li>切割成 3x3 共 9 张图片</li>
-                                            <li>每张小图尺寸为上方选择的尺寸</li>
+                                            <li>智能切割为 3x3 共 9 个文件</li>
+                                            <li>视频会自动转换为 9 个同步的 GIF</li>
                                         </ul>
                                     </div>
                                 )}
 
-                                {mode !== 'slice' && (
                                 <div>
                                 <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
                                 <div className="flex gap-2 mb-3">
@@ -629,9 +680,8 @@
                                     </div>
                                 )}
                                 </div>
-                                )}
                                 
-                                {mode === 'dynamic' && (
+                                {(mode === 'dynamic' || mode === 'slice') && (
                                     <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center gap-2 text-purple-800">
@@ -713,9 +763,9 @@
                                     )}
                                     {item.type === 'video' && item.processedUrl && <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>}
                                     {/* 显示序号，如果是切图模式 */}
-                                    {mode === 'slice' && item.name.match(/_(\d+)\.png$/) && (
+                                    {mode === 'slice' && item.name.match(/_(\d+)\.(png|gif)$/) && (
                                         <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
-                                            {item.name.match(/_(\d+)\.png$/)[1]}
+                                            {item.name.match(/_(\d+)\.(png|gif)$/)[1]}
                                         </div>
                                     )}
                                     </div>
