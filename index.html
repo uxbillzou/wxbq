@@ -69,6 +69,7 @@
             const [paddingColor, setPaddingColor] = useState('transparent');
             const [removeWhiteBg, setRemoveWhiteBg] = useState(false);
             const [bgTolerance, setBgTolerance] = useState(20);
+            const [sliceGridSize, setSliceGridSize] = useState(3); // 切片网格: 3 或 4
             
             // GIF 独立配置
             const [gifConfig, setGifConfig] = useState({
@@ -107,32 +108,34 @@
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
             // --- 切图预处理：生成任务列表 ---
-            // 注意：这里只生成“待处理”任务，包含切片位置信息，具体的渲染和背景处理统一由 processItem 完成
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const imgUrl = URL.createObjectURL(file);
                     const img = new Image();
                     img.src = imgUrl;
                     img.onload = () => {
-                        const size = Math.max(img.width, img.height); // 虚拟正方形边长 (取长边)
+                        const size = Math.max(img.width, img.height); // 虚拟正方形边长
                         const offsetX = (size - img.width) / 2;
                         const offsetY = (size - img.height) / 2;
-                        const pieceSize = size / 3;
+                        
+                        // 动态计算切片大小
+                        const gridSize = sliceGridSize; 
+                        const pieceSize = size / gridSize;
                         const newItems = [];
                         
-                        for (let row = 0; row < 3; row++) {
-                            for (let col = 0; col < 3; col++) {
-                                const index = row * 3 + col + 1;
+                        for (let row = 0; row < gridSize; row++) {
+                            for (let col = 0; col < gridSize; col++) {
+                                const index = row * gridSize + col + 1;
                                 newItems.push({
                                     id: generateId(),
                                     file: null,
-                                    originalUrl: imgUrl, // 复用原图 URL
+                                    originalUrl: imgUrl, 
                                     processedUrl: null,
                                     size: 0,
                                     status: 'pending',
                                     name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
                                     type: 'image',
-                                    sliceInfo: { // 关键：存储布局信息
+                                    sliceInfo: { 
                                         cellX: col * pieceSize,
                                         cellY: row * pieceSize,
                                         cellSize: pieceSize,
@@ -161,12 +164,14 @@
                         const size = Math.max(video.videoWidth, video.videoHeight);
                         const offsetX = (size - video.videoWidth) / 2;
                         const offsetY = (size - video.videoHeight) / 2;
-                        const pieceSize = size / 3;
+                        
+                        const gridSize = sliceGridSize;
+                        const pieceSize = size / gridSize;
                         
                         const newItems = [];
-                        for (let i = 0; i < 9; i++) {
-                            const row = Math.floor(i / 3);
-                            const col = i % 3;
+                        for (let i = 0; i < gridSize * gridSize; i++) {
+                            const row = Math.floor(i / gridSize);
+                            const col = i % gridSize;
                             newItems.push({
                                 id: generateId(),
                                 file: file,
@@ -258,12 +263,8 @@
 
                 if (sliceInfo) {
                     // --- 切片模式：坐标映射逻辑 ---
-                    // 目标 Canvas (width x height) 对应切片区域 (cellX, cellY, cellSize)
-                    // 缩放比例
                     const scale = width / sliceInfo.cellSize;
                     
-                    // 计算源图像在目标 Canvas 上的位置
-                    // 目标X = (源图在虚拟正方形中的X - 切片在虚拟正方形中的X) * 缩放
                     const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
                     const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
                     const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
@@ -283,7 +284,6 @@
                 }
 
                 // 3. 智能去底 (像素操作)
-                // 切片模式下如果背景复杂，去底可能效果不好，但此处允许执行
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -327,7 +327,7 @@
                                 height: height,
                                 workerScript: workerUrl,
                                 repeat: 0,
-                                background: color === 'transparent' ? 0x00000000 : null, // gif.js 只能设透明或不处理
+                                background: color === 'transparent' ? 0x00000000 : null,
                                 transparent: color === 'transparent' ? 0x00000000 : null
                             });
 
@@ -506,10 +506,10 @@
                                 </div>
                                 <div className="text-left">
                                     <div className="font-bold text-base">
-                                        {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '九宫格切图'}
+                                        {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '切图(3x3/4x4)'}
                                     </div>
                                     <div className="text-[10px] opacity-70">
-                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 1变9'}
+                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 切割'}
                                     </div>
                                 </div>
                             </button>
@@ -542,7 +542,7 @@
                                     {mode === 'slice' ? '点击添加素材(图/视频)' : `点击添加${mode === 'static' ? '图片' : '视频'}`}
                                 </h3>
                                 <p className="text-gray-400 text-xs">
-                                    {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : mode === 'dynamic' ? '支持 MP4, MOV' : '自动裁剪正方形并切成9张'}
+                                    {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : mode === 'dynamic' ? '支持 MP4, MOV' : '自动裁剪正方形并切图'}
                                 </p>
                             </div>
 
@@ -602,6 +602,32 @@
                                             )}
                                         </div>
                                     </div>
+                                    
+                                    {/* 4x4 Grid Selector for Slice Mode */}
+                                    {mode === 'slice' && (
+                                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex items-center gap-2 text-blue-800">
+                                                    <Icons.GridIcon size={16} />
+                                                    <h4 className="font-bold text-sm">切片网格</h4>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => setSliceGridSize(3)} 
+                                                    className={`flex-1 py-2 text-xs border rounded transition-colors ${sliceGridSize === 3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200'}`}
+                                                >
+                                                    3x3 (9格)
+                                                </button>
+                                                <button 
+                                                    onClick={() => setSliceGridSize(4)} 
+                                                    className={`flex-1 py-2 text-xs border rounded transition-colors ${sliceGridSize === 4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200'}`}
+                                                >
+                                                    4x4 (16格)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* GIF 压缩配置 */}
                                     {(mode === 'dynamic' || mode === 'slice') && (
