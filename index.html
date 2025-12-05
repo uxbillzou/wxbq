@@ -56,7 +56,8 @@
             Sliders: (p) => <IconBase {...p}><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></IconBase>,
             Heart: (p) => <IconBase {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>,
             UserPlus: (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></IconBase>,
-            Palette: (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>
+            Palette: (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>,
+            Compress: (p) => <IconBase {...p}><path d="M11 5v6h6"/><path d="M5 19v-6h6"/><path d="m19 5-8 8"/><path d="m5 19 8-8"/></IconBase>
         };
 
         const App = () => {
@@ -110,18 +111,17 @@
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
-            // --- 切图预处理：生成任务列表 ---
+            // --- 切图预处理 ---
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const imgUrl = URL.createObjectURL(file);
                     const img = new Image();
                     img.src = imgUrl;
                     img.onload = () => {
-                        const size = Math.max(img.width, img.height); // 虚拟正方形边长
+                        const size = Math.max(img.width, img.height);
                         const offsetX = (size - img.width) / 2;
                         const offsetY = (size - img.height) / 2;
                         
-                        // 动态计算切片大小
                         const rows = sliceRows;
                         const cols = sliceCols;
                         const pieceW = size / cols;
@@ -268,26 +268,13 @@
                 }
 
                 if (sliceInfo) {
-                    // 切片模式：映射坐标
-                    // 目标: width, height
-                    // 源: cellSizeW, cellSizeH (这是我们在虚拟正方形中切的块大小)
-                    // 要把源块缩放到目标大小
-                    
-                    // 这里假设目标也是正方形或者按比例？
-                    // Sticker通常是正方形，但如果 targetSize 不是正方形 (例如 750x400)，切片也会变形吗？
-                    // 为了保证切片不变形，我们应该保持源切片的宽高比，Contain在目标中。
-                    // 不过切片模式下，通常我们希望切出来的就是目标尺寸满铺。
-                    // 简化逻辑：直接拉伸铺满目标 Canvas (因为切的时候已经是按比例切的)
-                    // 如果切的是正方形，目标也是正方形，那就是完美的。
-                    
-                    const sx = (sliceInfo.imgX ?? sliceInfo.videoX) + sliceInfo.cellX;
-                    const sy = (sliceInfo.imgY ?? sliceInfo.videoY) + sliceInfo.cellY;
-                    const sw = sliceInfo.cellSizeW;
-                    const sh = sliceInfo.cellSizeH;
-                    
-                    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
+                    const scale = width / sliceInfo.cellSizeW;
+                    const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
+                    const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
+                    const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
+                    const dh = (sliceInfo.imgH ?? sliceInfo.videoH) * scale;
+                    ctx.drawImage(source, dx, dy, dw, dh);
                 } else {
-                    // 普通模式：Contain 居中
                     const srcW = source.videoWidth || source.width;
                     const srcH = source.videoHeight || source.height;
                     const scale = Math.min(width / srcW, height / srcH);
@@ -314,6 +301,7 @@
                 }
             };
 
+            // 核心处理函数 (接收 customConfig 参数)
             const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl || item.status === 'done') return item; 
 
@@ -413,7 +401,17 @@
                     if (itemsToProcess.length > 0) {
                         setIsGlobalProcessing(true);
                         const processedResults = await Promise.all(
-                            itemsToProcess.map(item => processItem(item, targetSize.w, targetSize.h, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig))
+                            itemsToProcess.map(item => processItem(
+                                item, 
+                                targetSize.w, 
+                                targetSize.h, 
+                                paddingColor, 
+                                quality, 
+                                removeWhiteBg, 
+                                bgTolerance, 
+                                workerBlobUrl, 
+                                item.customConfig || gifConfig // 优先使用单独的压缩配置
+                            ))
                         );
                         setItems(prev => prev.map(prevItem => {
                             const processed = processedResults.find(p => p.id === prevItem.id);
@@ -425,9 +423,15 @@
                 processQueue();
             }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
-            // 设置变更触发重新处理
             useEffect(() => {
-               setItems(prev => prev.map(item => ({ ...item, status: 'pending' })));
+                // 当全局设置改变时，所有非slice模式的图片重置，slice模式下保持不变以免切片错乱，
+                // 或者我们可以让全部重置。简单起见，只要有变动就重置所有非 'done' 的？
+                // 为了响应“背景色”改变，我们需要重置状态。
+                // 注意：如果点击了单独压缩，customConfig 会被设置，这里全局变更会覆盖它吗？
+                // 现在的逻辑：全局变动 -> 所有变为 pending -> 重新生成。
+                // 如果想保留单独压缩的结果，需要 diff 逻辑。
+                // 简单处理：全局变动重置所有。
+                setItems(prev => prev.map(item => ({ ...item, status: 'pending', customConfig: null }))); 
             }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig]);
 
             const formatSize = (bytes) => {
@@ -450,6 +454,24 @@
                     setClearConfirm(true);
                     setTimeout(() => setClearConfirm(false), 3000);
                 }
+            };
+
+            // --- 智能压缩处理 ---
+            const compressItem = (id) => {
+                setItems(prev => prev.map(item => {
+                    if (item.id === id) {
+                        return {
+                            ...item,
+                            status: 'pending', // 触发重新处理
+                            customConfig: {
+                                fps: 5,       // 降帧
+                                duration: 2.0,// 缩短时长
+                                quality: 20   // 降低画质
+                            }
+                        };
+                    }
+                    return item;
+                }));
             };
 
             const downloadItem = (item) => {
@@ -490,7 +512,6 @@
                 setIsZipping(false);
             };
 
-            // UI 辅助变量
             const themeColor = mode === 'static' ? 'green' : (mode === 'dynamic' ? 'purple' : 'blue');
             const themeIconBg = mode === 'static' ? 'bg-green-100 text-green-600' : (mode === 'dynamic' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600');
             const themeBorderHover = `hover:border-${themeColor}-400 hover:bg-${themeColor}-50`;
@@ -508,7 +529,7 @@
                         {['static', 'dynamic', 'slice'].map(m => (
                             <button 
                                 key={m}
-                                onClick={() => { setMode(m); setRemoveWhiteBg(false); setItems([]); }} // 切换模式时清空列表，防止切片网格混乱
+                                onClick={() => { setMode(m); setRemoveWhiteBg(false); setItems([]); }} 
                                 className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === m 
                                     ? `border-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-50 text-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-700 shadow-md ring-2 ring-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 ring-offset-2` 
                                     : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
@@ -523,7 +544,7 @@
                                         {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '切图(3x3/4x4)'}
                                     </div>
                                     <div className="text-[10px] opacity-70">
-                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '自定义网格切分'}
+                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 切割'}
                                     </div>
                                 </div>
                             </button>
@@ -566,7 +587,6 @@
                                 </div>
                                 <div className="space-y-6">
                                     
-                                    {/* --- 移动到顶部的切片网格设置 (仅 Slice 模式) --- */}
                                     {mode === 'slice' && (
                                         <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
                                             <div className="flex justify-between items-center mb-3">
@@ -574,85 +594,39 @@
                                                     <Icons.GridIcon size={16} />
                                                     <h4 className="font-bold text-sm">自定义切片网格</h4>
                                                 </div>
-                                                {/* Shortcuts */}
                                                 <div className="flex gap-1">
-                                                    <button 
-                                                        onClick={() => { setSliceRows(3); setSliceCols(3); }}
-                                                        className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===3 && sliceCols===3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
-                                                    >
-                                                        3x3
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => { setSliceRows(4); setSliceCols(4); }}
-                                                        className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===4 && sliceCols===4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
-                                                    >
-                                                        4x4
-                                                    </button>
+                                                    <button onClick={() => { setSliceRows(3); setSliceCols(3); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===3 && sliceCols===3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}>3x3</button>
+                                                    <button onClick={() => { setSliceRows(4); setSliceCols(4); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===4 && sliceCols===4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}>4x4</button>
                                                 </div>
                                             </div>
-                                            
                                             <div className="space-y-4">
-                                                {/* Rows Slider */}
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between text-xs text-gray-500">
-                                                        <span>行数 (Rows)</span>
-                                                        <span className="font-mono font-bold text-blue-600">{sliceRows}</span>
-                                                    </div>
-                                                    <input 
-                                                        type="range" min="1" max="8" step="1" 
-                                                        value={sliceRows} 
-                                                        onChange={(e) => setSliceRows(parseInt(e.target.value))} 
-                                                        className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" 
-                                                    />
+                                                    <div className="flex justify-between text-xs text-gray-500"><span>行数 (Rows)</span><span className="font-mono font-bold text-blue-600">{sliceRows}</span></div>
+                                                    <input type="range" min="1" max="8" step="1" value={sliceRows} onChange={(e) => setSliceRows(parseInt(e.target.value))} className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                                                 </div>
-
-                                                {/* Cols Slider */}
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between text-xs text-gray-500">
-                                                        <span>列数 (Cols)</span>
-                                                        <span className="font-mono font-bold text-blue-600">{sliceCols}</span>
-                                                    </div>
-                                                    <input 
-                                                        type="range" min="1" max="8" step="1" 
-                                                        value={sliceCols} 
-                                                        onChange={(e) => setSliceCols(parseInt(e.target.value))} 
-                                                        className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" 
-                                                    />
+                                                    <div className="flex justify-between text-xs text-gray-500"><span>列数 (Cols)</span><span className="font-mono font-bold text-blue-600">{sliceCols}</span></div>
+                                                    <input type="range" min="1" max="8" step="1" value={sliceCols} onChange={(e) => setSliceCols(parseInt(e.target.value))} className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                                                 </div>
-                                                
-                                                <div className="text-[10px] text-blue-400 text-center pt-1 border-t border-blue-100">
-                                                    将生成 {sliceRows * sliceCols} 个文件 (预览网格已同步)
-                                                </div>
+                                                <div className="text-[10px] text-blue-400 text-center pt-1 border-t border-blue-100">将生成 {sliceRows * sliceCols} 个文件</div>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* 尺寸选择 */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
                                         <div className="flex flex-wrap gap-2">
                                             {sizePresets.map(preset => (
-                                                <button 
-                                                    key={preset.label} 
-                                                    onClick={() => setTargetSize({ w: preset.w, h: preset.h })} 
-                                                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? `bg-${themeColor}-500 text-white border-${themeColor}-500 shadow-md` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-                                                >
-                                                    {preset.label}
-                                                </button>
+                                                <button key={preset.label} onClick={() => setTargetSize({ w: preset.w, h: preset.h })} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? `bg-${themeColor}-500 text-white border-${themeColor}-500 shadow-md` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{preset.label}</button>
                                             ))}
                                         </div>
                                     </div>
 
-                                    {/* 背景处理 */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
                                         <div className="flex gap-2 mb-3">
-                                            <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}>
-                                                <div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明
-                                            </button>
-                                            <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
-                                                <div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色
-                                            </button>
+                                            <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明</button>
+                                            <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色</button>
                                             <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
                                                 <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
                                                 <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
@@ -660,7 +634,6 @@
                                             </label>
                                         </div>
 
-                                        {/* 去除背景开关 */}
                                         <div className={`p-3 rounded-xl border transition-colors ${removeWhiteBg ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
                                             <div className="flex items-center justify-between">
                                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -679,7 +652,6 @@
                                         </div>
                                     </div>
 
-                                    {/* GIF 压缩配置 */}
                                     {(mode === 'dynamic' || mode === 'slice') && (
                                         <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
                                             <div className="flex justify-between items-center">
@@ -689,7 +661,7 @@
                                                 </div>
                                                 <div className="flex gap-1.5">
                                                     <button onClick={() => setGifConfig({fps: 8, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===8 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600'}`}>标准</button>
-                                                    <button onClick={() => setGifConfig({fps: 5, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===5 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600'}`}>优化</button>
+                                                    <button onClick={() => setGifConfig({fps: 5, quality: 10, duration: 3})} className={`text-[10px] px-2 py-1 border rounded transition-colors ${gifConfig.fps===5 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-purple-200 text-purple-600'}`}>500K限制</button>
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
@@ -701,7 +673,6 @@
                                         </div>
                                     )}
 
-                                    {/* 批量操作按钮 */}
                                     {items.length > 0 && (
                                         <div className="pt-4 border-t border-gray-100 space-y-3">
                                             <button onClick={downloadAllZip} disabled={isZipping} className={`w-full py-3 text-white rounded-xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isZipping ? 'bg-gray-400' : `bg-${themeColor}-600 hover:bg-${themeColor}-700`}`}>
@@ -728,10 +699,7 @@
                                 {items.length > 0 ? (
                                     <div 
                                         className="grid gap-4"
-                                        style={{ 
-                                            // 动态设置 Grid 列数，仅在 slice 模式下生效
-                                            gridTemplateColumns: mode === 'slice' ? `repeat(${sliceCols}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(140px, 1fr))'
-                                        }}
+                                        style={{ gridTemplateColumns: mode === 'slice' ? `repeat(${sliceCols}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(140px, 1fr))' }}
                                     >
                                         {items.map(item => (
                                             <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
@@ -745,7 +713,23 @@
                                                             <span className="text-xs text-gray-400">{item.type==='video'?'转换中...':'处理中...'}</span>
                                                         </div>
                                                     )}
-                                                    {item.type === 'video' && item.processedUrl && <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>}
+                                                    {/* GIF/Video Badges and Overlay Buttons */}
+                                                    {item.type === 'video' && item.processedUrl && (
+                                                        <>
+                                                            <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>
+                                                            {/* Smart Compress Button if size > 500KB */}
+                                                            {item.size > 500 * 1024 && (
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); compressItem(item.id); }}
+                                                                    className="absolute top-1 left-1 bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-sm flex items-center gap-1 transition-colors"
+                                                                    title="文件过大，点击一键优化到 500KB 以下"
+                                                                >
+                                                                    <Icons.Compress size={10} />
+                                                                    压缩
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
                                                     {mode === 'slice' && item.name.match(/_(\d+)\.(png|gif)$/) && (
                                                         <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
                                                             {item.name.match(/_(\d+)\.(png|gif)$/)[1]}
@@ -753,12 +737,14 @@
                                                     )}
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between items-center text-xs text-gray-500"><span className="truncate max-w-[80px]" title={item.name}>{item.name}</span><span className={`${item.size > 1024*1024 ? 'text-red-500 font-bold' : `text-${themeColor}-600`}`}>{formatSize(item.size)}</span></div>
+                                                    <div className="flex justify-between items-center text-xs text-gray-500">
+                                                        <span className="truncate max-w-[80px]" title={item.name}>{item.name}</span>
+                                                        <span className={`${item.size > 500 * 1024 ? 'text-red-500 font-bold' : `text-${themeColor}-600`}`}>{formatSize(item.size)}</span>
+                                                    </div>
                                                     <button onClick={() => downloadItem(item)} disabled={!item.processedUrl} className="w-full mt-2 py-1.5 bg-white border border-gray-200 hover:border-green-500 hover:text-green-600 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"><Icons.Download size={12} />下载</button>
                                                 </div>
                                             </div>
                                         ))}
-                                        {/* 继续添加按钮：仅在非切图模式下显示，因为切图通常一次处理一张 */}
                                         {mode !== 'slice' && (
                                             <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
                                         )}
