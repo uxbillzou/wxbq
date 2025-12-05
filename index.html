@@ -31,7 +31,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // --- 图标组件 (修复版：不使用 Fragment 简写) ---
+        // --- 图标组件 ---
         const IconBase = ({ size = 24, className = "", children }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {children}
@@ -69,7 +69,10 @@
             const [paddingColor, setPaddingColor] = useState('transparent');
             const [removeWhiteBg, setRemoveWhiteBg] = useState(false);
             const [bgTolerance, setBgTolerance] = useState(20);
-            const [sliceGridSize, setSliceGridSize] = useState(3); // 切片网格: 3 或 4
+            
+            // 切片独立配置 (行与列)
+            const [sliceRows, setSliceRows] = useState(3);
+            const [sliceCols, setSliceCols] = useState(3);
             
             // GIF 独立配置
             const [gifConfig, setGifConfig] = useState({
@@ -119,13 +122,15 @@
                         const offsetY = (size - img.height) / 2;
                         
                         // 动态计算切片大小
-                        const gridSize = sliceGridSize; 
-                        const pieceSize = size / gridSize;
+                        const rows = sliceRows;
+                        const cols = sliceCols;
+                        const pieceW = size / cols;
+                        const pieceH = size / rows;
                         const newItems = [];
                         
-                        for (let row = 0; row < gridSize; row++) {
-                            for (let col = 0; col < gridSize; col++) {
-                                const index = row * gridSize + col + 1;
+                        for (let row = 0; row < rows; row++) {
+                            for (let col = 0; col < cols; col++) {
+                                const index = row * cols + col + 1;
                                 newItems.push({
                                     id: generateId(),
                                     file: null,
@@ -136,9 +141,10 @@
                                     name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
                                     type: 'image',
                                     sliceInfo: { 
-                                        cellX: col * pieceSize,
-                                        cellY: row * pieceSize,
-                                        cellSize: pieceSize,
+                                        cellX: col * pieceW,
+                                        cellY: row * pieceH,
+                                        cellSizeW: pieceW,
+                                        cellSizeH: pieceH,
                                         imgX: offsetX,
                                         imgY: offsetY,
                                         imgW: img.width,
@@ -165,13 +171,15 @@
                         const offsetX = (size - video.videoWidth) / 2;
                         const offsetY = (size - video.videoHeight) / 2;
                         
-                        const gridSize = sliceGridSize;
-                        const pieceSize = size / gridSize;
+                        const rows = sliceRows;
+                        const cols = sliceCols;
+                        const pieceW = size / cols;
+                        const pieceH = size / rows;
                         
                         const newItems = [];
-                        for (let i = 0; i < gridSize * gridSize; i++) {
-                            const row = Math.floor(i / gridSize);
-                            const col = i % gridSize;
+                        for (let i = 0; i < rows * cols; i++) {
+                            const row = Math.floor(i / cols);
+                            const col = i % cols;
                             newItems.push({
                                 id: generateId(),
                                 file: file,
@@ -182,9 +190,10 @@
                                 name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
                                 type: 'video',
                                 sliceInfo: {
-                                    cellX: col * pieceSize,
-                                    cellY: row * pieceSize,
-                                    cellSize: pieceSize,
+                                    cellX: col * pieceW,
+                                    cellY: row * pieceH,
+                                    cellSizeW: pieceW,
+                                    cellSizeH: pieceH,
                                     videoX: offsetX,
                                     videoY: offsetY,
                                     videoW: video.videoWidth,
@@ -230,7 +239,7 @@
                 .map(file => ({
                     id: generateId(),
                     file,
-                    originalUrl: URL.createObjectURL(file), // 使用 ObjectURL 优化大文件
+                    originalUrl: URL.createObjectURL(file), 
                     processedUrl: null,
                     size: 0,
                     status: 'pending',
@@ -250,29 +259,35 @@
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            // --- 核心绘制逻辑 (含切片计算 & 背景填充) ---
+            // --- 核心绘制逻辑 ---
             const drawFrame = (ctx, source, width, height, color, removeBg, tolerance, sliceInfo) => {
-                // 1. 清空画布
                 ctx.clearRect(0, 0, width, height);
-                
-                // 2. 填充背景 (透明时不填，否则填颜色)
                 if (color !== 'transparent') {
                     ctx.fillStyle = color;
                     ctx.fillRect(0, 0, width, height);
                 }
 
                 if (sliceInfo) {
-                    // --- 切片模式：坐标映射逻辑 ---
-                    const scale = width / sliceInfo.cellSize;
+                    // 切片模式：映射坐标
+                    // 目标: width, height
+                    // 源: cellSizeW, cellSizeH (这是我们在虚拟正方形中切的块大小)
+                    // 要把源块缩放到目标大小
                     
-                    const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
-                    const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
-                    const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
-                    const dh = (sliceInfo.imgH ?? sliceInfo.videoH) * scale;
-
-                    ctx.drawImage(source, dx, dy, dw, dh);
+                    // 这里假设目标也是正方形或者按比例？
+                    // Sticker通常是正方形，但如果 targetSize 不是正方形 (例如 750x400)，切片也会变形吗？
+                    // 为了保证切片不变形，我们应该保持源切片的宽高比，Contain在目标中。
+                    // 不过切片模式下，通常我们希望切出来的就是目标尺寸满铺。
+                    // 简化逻辑：直接拉伸铺满目标 Canvas (因为切的时候已经是按比例切的)
+                    // 如果切的是正方形，目标也是正方形，那就是完美的。
+                    
+                    const sx = (sliceInfo.imgX ?? sliceInfo.videoX) + sliceInfo.cellX;
+                    const sy = (sliceInfo.imgY ?? sliceInfo.videoY) + sliceInfo.cellY;
+                    const sw = sliceInfo.cellSizeW;
+                    const sh = sliceInfo.cellSizeH;
+                    
+                    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
                 } else {
-                    // --- 普通模式：Contain 居中 ---
+                    // 普通模式：Contain 居中
                     const srcW = source.videoWidth || source.width;
                     const srcH = source.videoHeight || source.height;
                     const scale = Math.min(width / srcW, height / srcH);
@@ -283,7 +298,6 @@
                     ctx.drawImage(source, x, y, w, h);
                 }
 
-                // 3. 智能去底 (像素操作)
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -494,7 +508,7 @@
                         {['static', 'dynamic', 'slice'].map(m => (
                             <button 
                                 key={m}
-                                onClick={() => { setMode(m); setRemoveWhiteBg(false); }}
+                                onClick={() => { setMode(m); setRemoveWhiteBg(false); setItems([]); }} // 切换模式时清空列表，防止切片网格混乱
                                 className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === m 
                                     ? `border-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-50 text-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-700 shadow-md ring-2 ring-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 ring-offset-2` 
                                     : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
@@ -509,7 +523,7 @@
                                         {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '切图(3x3/4x4)'}
                                     </div>
                                     <div className="text-[10px] opacity-70">
-                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 切割'}
+                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '自定义网格切分'}
                                     </div>
                                 </div>
                             </button>
@@ -551,6 +565,68 @@
                                     <h3 className="font-bold text-lg flex items-center gap-2"><Icons.Settings size={20} className="text-gray-400" />参数设置</h3>
                                 </div>
                                 <div className="space-y-6">
+                                    
+                                    {/* --- 移动到顶部的切片网格设置 (仅 Slice 模式) --- */}
+                                    {mode === 'slice' && (
+                                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div className="flex items-center gap-2 text-blue-800">
+                                                    <Icons.GridIcon size={16} />
+                                                    <h4 className="font-bold text-sm">自定义切片网格</h4>
+                                                </div>
+                                                {/* Shortcuts */}
+                                                <div className="flex gap-1">
+                                                    <button 
+                                                        onClick={() => { setSliceRows(3); setSliceCols(3); }}
+                                                        className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===3 && sliceCols===3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+                                                    >
+                                                        3x3
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { setSliceRows(4); setSliceCols(4); }}
+                                                        className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===4 && sliceCols===4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+                                                    >
+                                                        4x4
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                {/* Rows Slider */}
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between text-xs text-gray-500">
+                                                        <span>行数 (Rows)</span>
+                                                        <span className="font-mono font-bold text-blue-600">{sliceRows}</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" min="1" max="8" step="1" 
+                                                        value={sliceRows} 
+                                                        onChange={(e) => setSliceRows(parseInt(e.target.value))} 
+                                                        className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" 
+                                                    />
+                                                </div>
+
+                                                {/* Cols Slider */}
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between text-xs text-gray-500">
+                                                        <span>列数 (Cols)</span>
+                                                        <span className="font-mono font-bold text-blue-600">{sliceCols}</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" min="1" max="8" step="1" 
+                                                        value={sliceCols} 
+                                                        onChange={(e) => setSliceCols(parseInt(e.target.value))} 
+                                                        className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" 
+                                                    />
+                                                </div>
+                                                
+                                                <div className="text-[10px] text-blue-400 text-center pt-1 border-t border-blue-100">
+                                                    将生成 {sliceRows * sliceCols} 个文件 (预览网格已同步)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* 尺寸选择 */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
@@ -602,32 +678,6 @@
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    {/* 4x4 Grid Selector for Slice Mode */}
-                                    {mode === 'slice' && (
-                                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <div className="flex items-center gap-2 text-blue-800">
-                                                    <Icons.GridIcon size={16} />
-                                                    <h4 className="font-bold text-sm">切片网格</h4>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button 
-                                                    onClick={() => setSliceGridSize(3)} 
-                                                    className={`flex-1 py-2 text-xs border rounded transition-colors ${sliceGridSize === 3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200'}`}
-                                                >
-                                                    3x3 (9格)
-                                                </button>
-                                                <button 
-                                                    onClick={() => setSliceGridSize(4)} 
-                                                    className={`flex-1 py-2 text-xs border rounded transition-colors ${sliceGridSize === 4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200'}`}
-                                                >
-                                                    4x4 (16格)
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* GIF 压缩配置 */}
                                     {(mode === 'dynamic' || mode === 'slice') && (
@@ -676,7 +726,13 @@
                                 </div>
 
                                 {items.length > 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div 
+                                        className="grid gap-4"
+                                        style={{ 
+                                            // 动态设置 Grid 列数，仅在 slice 模式下生效
+                                            gridTemplateColumns: mode === 'slice' ? `repeat(${sliceCols}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(140px, 1fr))'
+                                        }}
+                                    >
                                         {items.map(item => (
                                             <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
                                                 <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Icons.X size={14} /></button>
@@ -702,7 +758,10 @@
                                                 </div>
                                             </div>
                                         ))}
-                                        <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
+                                        {/* 继续添加按钮：仅在非切图模式下显示，因为切图通常一次处理一张 */}
+                                        {mode !== 'slice' && (
+                                            <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="h-64 flex flex-col items-center justify-center text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl"><p className="text-sm">暂无素材，请在左侧添加</p></div>
