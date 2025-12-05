@@ -12,6 +12,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8108749186774450"
+     crossorigin="anonymous"></script>
+
     <style>
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
@@ -58,6 +62,33 @@
             UserPlus: (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></IconBase>,
             Palette: (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>,
             Compress: (p) => <IconBase {...p}><path d="M11 5v6h6"/><path d="M5 19v-6h6"/><path d="m19 5-8 8"/><path d="m5 19 8-8"/></IconBase>
+        };
+
+        // --- 广告组件 ---
+        const AdUnit = ({ slot, format = "auto" }) => {
+            useEffect(() => {
+                try {
+                    if (window.adsbygoogle) {
+                        (window.adsbygoogle = window.adsbygoogle || []).push({});
+                    }
+                } catch (e) {
+                    // console.log("AdSense load error", e);
+                }
+            }, []);
+
+            return (
+                <div className="w-full my-4 flex justify-center bg-gray-50 rounded-lg overflow-hidden min-h-[100px] border border-dashed border-gray-200 relative">
+                    <ins className="adsbygoogle"
+                         style={{ display: 'block', width: '100%' }}
+                         data-ad-client="ca-pub-8108749186774450"
+                         data-ad-slot={slot || "1234567890"}
+                         data-ad-format={format}
+                         data-full-width-responsive="true"></ins>
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-xs pointer-events-none">
+                        广告位
+                    </div>
+                </div>
+            );
         };
 
         const App = () => {
@@ -424,13 +455,6 @@
             }, [items, targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
             useEffect(() => {
-                // 当全局设置改变时，所有非slice模式的图片重置，slice模式下保持不变以免切片错乱，
-                // 或者我们可以让全部重置。简单起见，只要有变动就重置所有非 'done' 的？
-                // 为了响应“背景色”改变，我们需要重置状态。
-                // 注意：如果点击了单独压缩，customConfig 会被设置，这里全局变更会覆盖它吗？
-                // 现在的逻辑：全局变动 -> 所有变为 pending -> 重新生成。
-                // 如果想保留单独压缩的结果，需要 diff 逻辑。
-                // 简单处理：全局变动重置所有。
                 setItems(prev => prev.map(item => ({ ...item, status: 'pending', customConfig: null }))); 
             }, [targetSize, paddingColor, quality, removeWhiteBg, bgTolerance, workerBlobUrl, gifConfig]);
 
@@ -686,6 +710,9 @@
                                     )}
                                 </div>
                             </div>
+                            
+                            {/* 左侧广告位 */}
+                            <AdUnit slot="9876543210" />
                         </div>
 
                         {/* 右侧结果区 */}
@@ -745,6 +772,7 @@
                                                 </div>
                                             </div>
                                         ))}
+                                        {/* 继续添加按钮：非切图模式显示继续添加，切图模式下在空状态显示网格占位 */}
                                         {mode !== 'slice' && (
                                             <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
                                         )}
@@ -783,7 +811,10 @@
                     </div>
 
                     <footer className="mt-16 pt-8 border-t border-gray-200">
-                        <div className="flex flex-col md:flex-row justify-center items-center gap-8 text-center md:text-left">
+                        {/* 底部广告位 */}
+                        <AdUnit slot="1234567890" format="horizontal" />
+                        
+                        <div className="flex flex-col md:flex-row justify-center items-center gap-8 text-center md:text-left mt-8">
                             <div className="flex flex-col items-center gap-2">
                                 <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm">
                                     <img src="zanshang.png" alt="赞赏二维码" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.classList.add('bg-gray-50'); e.target.parentNode.innerHTML = '<div class="flex flex-col items-center gap-1 text-gray-300"><span class="text-[10px]">zanshang.png</span></div>'; }} />
