@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微信表情包/视频转GIF/九宫格切图工具</title>
+    <meta name="description" content="免费在线微信表情包制作工具，支持图片裁剪为240x240，视频转GIF动态表情，九宫格切图。自动压缩至500KB以下，微信表情开放平台首选辅助工具。">
+    <meta name="keywords" content="微信表情包制作, GIF压缩, 视频转GIF, 九宫格切图, 在线切片工具, 表情包尺寸调整">
+    <title>微信表情包制作神器 - 视频转GIF/九宫格切图/自动压缩</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -12,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
-    <!-- Google AdSense -->
+    <!-- Google AdSense (请确保 ID 正确) -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8108749186774450"
      crossorigin="anonymous"></script>
 
@@ -20,13 +22,18 @@
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
         .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         input[type=range] { height: 4px; border-radius: 2px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: currentColor; margin-top: -5px; cursor: pointer; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
+        
+        /* 针对 SEO 内容的样式优化 */
+        .seo-content h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #374151; }
+        .seo-content h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #4b5563; }
+        .seo-content p { margin-bottom: 1rem; line-height: 1.75; color: #6b7280; }
+        .seo-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #6b7280; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -61,7 +68,8 @@
             Heart: (p) => <IconBase {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>,
             UserPlus: (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></IconBase>,
             Palette: (p) => <IconBase {...p}><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></IconBase>,
-            Compress: (p) => <IconBase {...p}><path d="M11 5v6h6"/><path d="M5 19v-6h6"/><path d="m19 5-8 8"/><path d="m5 19 8-8"/></IconBase>
+            Compress: (p) => <IconBase {...p}><path d="M11 5v6h6"/><path d="M5 19v-6h6"/><path d="m19 5-8 8"/><path d="m5 19 8-8"/></IconBase>,
+            Shield: (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>
         };
 
         // --- 广告组件 ---
@@ -71,9 +79,7 @@
                     if (window.adsbygoogle) {
                         (window.adsbygoogle = window.adsbygoogle || []).push({});
                     }
-                } catch (e) {
-                    // console.log("AdSense load error", e);
-                }
+                } catch (e) { }
             }, []);
 
             return (
@@ -85,15 +91,32 @@
                          data-ad-format={format}
                          data-full-width-responsive="true"></ins>
                     <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-xs pointer-events-none">
-                        广告位
+                        广告位 (等待加载)
                     </div>
                 </div>
             );
         };
 
+        // --- 隐私政策弹窗组件 (AdSense 必须) ---
+        const PrivacyModal = ({ onClose }) => (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Icons.Shield size={20} className="text-green-500"/>隐私权政策</h2>
+                    <div className="text-sm text-gray-600 space-y-3">
+                        <p><strong>1. 数据收集：</strong> 本工具（微信表情包制作神器）是一个纯前端应用。这意味着您的所有图片、视频和处理过程均在您自己的浏览器（本地）完成，我们不会将您的文件上传到任何服务器。</p>
+                        <p><strong>2. Cookies 与广告：</strong> 我们使用 Google AdSense 展示广告。Google 可能会使用 Cookies 来根据您访问本网站和其他网站的记录展示个性化广告。</p>
+                        <p><strong>3. 第三方链接：</strong> 本网站可能包含指向第三方网站的链接（如赞赏码），我们不对这些网站的隐私惯例负责。</p>
+                        <p><strong>4. 同意：</strong> 使用本网站即表示您同意本隐私政策。</p>
+                    </div>
+                    <button onClick={onClose} className="w-full mt-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold transition-colors">我已知晓</button>
+                </div>
+            </div>
+        );
+
         const App = () => {
             const [items, setItems] = useState([]);
             const [mode, setMode] = useState('static'); // 'static' | 'dynamic' | 'slice'
+            const [showPrivacy, setShowPrivacy] = useState(false);
             
             // 设置状态
             const [targetSize, setTargetSize] = useState({ w: 240, h: 240 });
@@ -332,7 +355,7 @@
                 }
             };
 
-            // 核心处理函数 (接收 customConfig 参数)
+            // 核心处理函数
             const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl || item.status === 'done') return item; 
 
@@ -441,7 +464,7 @@
                                 removeWhiteBg, 
                                 bgTolerance, 
                                 workerBlobUrl, 
-                                item.customConfig || gifConfig // 优先使用单独的压缩配置
+                                item.customConfig || gifConfig 
                             ))
                         );
                         setItems(prev => prev.map(prevItem => {
@@ -480,17 +503,16 @@
                 }
             };
 
-            // --- 智能压缩处理 ---
             const compressItem = (id) => {
                 setItems(prev => prev.map(item => {
                     if (item.id === id) {
                         return {
                             ...item,
-                            status: 'pending', // 触发重新处理
+                            status: 'pending', 
                             customConfig: {
-                                fps: 5,       // 降帧
-                                duration: 2.0,// 缩短时长
-                                quality: 20   // 降低画质
+                                fps: 5,       
+                                duration: 2.0,
+                                quality: 20   
                             }
                         };
                     }
@@ -810,6 +832,24 @@
                         </div>
                     </div>
 
+                    {/* SEO 优化文本区域 */}
+                    <article className="mt-16 pt-12 border-t border-gray-200 max-w-4xl mx-auto seo-content">
+                        <h2>关于全能表情包制作神器</h2>
+                        <p>欢迎使用我们的在线表情包处理工具。这是一个完全免费、纯前端（本地运行）的图片和视频处理平台，旨在帮助您轻松制作符合微信表情开放平台标准的表情包素材。无论您是专业的表情包设计师，还是想制作有趣群聊斗图的普通用户，这里都能满足您的需求。</p>
+                        
+                        <h3>主要功能特色</h3>
+                        <ul>
+                            <li><strong>智能尺寸调整：</strong>一键将图片调整为微信标准的 240x240、120x120 或 750x400 像素，自动居中并填充透明或白色背景，无需复杂的 PS 操作。</li>
+                            <li><strong>视频转动态表情 (GIF)：</strong>支持 MP4、MOV 等格式视频直接转换为 GIF 动图。独家算法自动优化帧率和画质，支持一键压缩至 500KB 以下，完美适配微信添加限制。</li>
+                            <li><strong>九宫格切图：</strong>支持将一张大图或一段视频自动切割为 3x3 (九宫格) 或 4x4 (十六宫格)，朋友圈发图或群聊刷屏的神器。视频也能切成同步的 9 个 GIF 哦！</li>
+                            <li><strong>隐私安全保护：</strong>本工具所有处理均在您的浏览器本地完成，不会将您的原图或视频上传到任何服务器，绝对保障您的素材隐私安全。</li>
+                        </ul>
+
+                        <h3>常见问题 (FAQ)</h3>
+                        <p><strong>Q: 生成的 GIF 太大无法添加到微信怎么办？</strong><br/>A: 请使用我们特有的“一键压缩”功能。在动态表情模式下，如果结果超过 500KB，图片左上角会出现红色的压缩按钮，点击即可自动优化参数。</p>
+                        <p><strong>Q: 切图模式支持自定义行列吗？</strong><br/>A: 支持。在“九宫格切图”模式下，您可以自由拖动滑块设置 1x1 到 8x8 的任意网格布局，右侧预览区会实时显示切割效果。</p>
+                    </article>
+
                     <footer className="mt-16 pt-8 border-t border-gray-200">
                         {/* 底部广告位 */}
                         <AdUnit slot="1234567890" format="horizontal" />
@@ -830,8 +870,13 @@
                         </div>
                         <div className="mt-8 text-center text-gray-400 text-xs">
                             <p>本工具纯前端运行，您的图片不会上传到任何服务器。</p>
+                            <p className="mt-2">
+                                <button onClick={() => setShowPrivacy(true)} className="hover:text-blue-500 underline">隐私权政策</button>
+                            </p>
                         </div>
                     </footer>
+
+                    {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
                 </div>
                 </div>
             );
