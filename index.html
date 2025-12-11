@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="免费在线微信表情包制作工具，支持图片裁剪为240x240，视频转GIF动态表情，九宫格切图。自动压缩至500KB以下，微信表情开放平台首选辅助工具。">
-    <meta name="keywords" content="微信表情包制作, GIF压缩, 视频转GIF, 九宫格切图, 在线切片工具, 表情包尺寸调整">
-    <title>微信表情包制作神器 - 视频转GIF/九宫格切图/自动压缩</title>
+    <meta name="description" content="免费在线微信表情包制作神器，一键制作240x240标准表情，MP4视频转GIF动态表情，九宫格/十六宫格切图。支持智能压缩至500KB以下，完美适配微信表情开放平台规范。纯前端处理，保护隐私。">
+    <meta name="keywords" content="微信表情包制作, 视频转GIF, 在线GIF压缩, 九宫格切图, 微信表情尺寸, 动态表情制作, 表情包转换器, 朋友圈切图, 微信斗图工具">
+    <title>微信表情包制作神器 - 视频转GIF/九宫格切图/自动压缩 (免费在线)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
-    <!-- Google AdSense (请确保 ID 正确) -->
+    <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8108749186774450"
      crossorigin="anonymous"></script>
 
@@ -29,18 +29,38 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: currentColor; margin-top: -5px; cursor: pointer; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
         
-        /* 针对 SEO 内容的样式优化 */
-        .seo-content h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #374151; }
-        .seo-content h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #4b5563; }
-        .seo-content p { margin-bottom: 1rem; line-height: 1.75; color: #6b7280; }
-        .seo-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #6b7280; }
+        /* 针对 SEO 内容的样式优化 - 增强可读性，让 Google 认为这是高质量文章 */
+        .seo-content { line-height: 1.8; color: #4b5563; }
+        .seo-content h2 { font-size: 1.8rem; font-weight: 800; margin-top: 3rem; margin-bottom: 1.5rem; color: #1f2937; letter-spacing: -0.025em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+        .seo-content h3 { font-size: 1.4rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #374151; }
+        .seo-content p { margin-bottom: 1.5rem; font-size: 1rem; }
+        .seo-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .seo-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .seo-content li { margin-bottom: 0.5rem; }
+        .seo-content strong { color: #111827; font-weight: 600; }
+        .seo-content .highlight-box { background-color: #f3f4f6; border-left: 4px solid #3b82f6; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem; }
+
+        /* 背景漂浮动画 */
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+        }
+        .floating-emoji {
+            position: absolute;
+            bottom: -50px;
+            animation: floatUp linear infinite;
+            user-select: none;
+            z-index: -1;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans relative overflow-x-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
         // --- 图标组件 ---
         const IconBase = ({ size = 24, className = "", children }) => (
@@ -103,19 +123,53 @@
                 <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Icons.Shield size={20} className="text-green-500"/>隐私权政策</h2>
                     <div className="text-sm text-gray-600 space-y-3">
-                        <p><strong>1. 数据收集：</strong> 本工具（微信表情包制作神器）是一个纯前端应用。这意味着您的所有图片、视频和处理过程均在您自己的浏览器（本地）完成，我们不会将您的文件上传到任何服务器。</p>
-                        <p><strong>2. Cookies 与广告：</strong> 我们使用 Google AdSense 展示广告。Google 可能会使用 Cookies 来根据您访问本网站和其他网站的记录展示个性化广告。</p>
-                        <p><strong>3. 第三方链接：</strong> 本网站可能包含指向第三方网站的链接（如赞赏码），我们不对这些网站的隐私惯例负责。</p>
-                        <p><strong>4. 同意：</strong> 使用本网站即表示您同意本隐私政策。</p>
+                        <p><strong>1. 数据收集与隐私：</strong> 本工具（微信表情包制作神器）致力于保护您的隐私。所有图片、视频和处理过程均在您的浏览器本地（Client-side）完成，我们绝对不会将您的文件上传到任何服务器。您的创作内容仅保存在您的设备上。</p>
+                        <p><strong>2. Cookies 与广告：</strong> 为了维持网站运营，我们使用 Google AdSense 展示广告。Google 作为第三方供应商，可能会使用 Cookies（如 DoubleClick Cookie）来根据您访问本网站和其他网站的记录展示个性化广告。</p>
+                        <p><strong>3. 您的权利：</strong> 您可以通过访问 <a href="http://www.google.com/ads/preferences/" target="_blank" class="text-blue-500 underline">Google 广告设置</a> 来选择停用个性化广告。</p>
+                        <p><strong>4. 免责声明：</strong> 本工具免费提供，不附带任何明示或暗示的保证。对于因使用本工具而造成的任何数据丢失或其他损失，我们不承担责任。</p>
                     </div>
                     <button onClick={onClose} className="w-full mt-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold transition-colors">我已知晓</button>
                 </div>
             </div>
         );
 
+        // --- 背景动效组件 ---
+        const BackgroundEffects = () => {
+            const emojis = useMemo(() => {
+                const list = ['😂', '😎', '🔥', '🤔', '👀', '💖', '🎉', '✨', '🥺', '🐱', '🚀', '🌈', '💩', '👻', '🤖'];
+                return Array.from({ length: 25 }).map((_, i) => ({
+                    id: i,
+                    char: list[Math.floor(Math.random() * list.length)],
+                    left: `${Math.random() * 100}%`,
+                    animationDuration: `${15 + Math.random() * 20}s`,
+                    animationDelay: `${Math.random() * 10}s`,
+                    fontSize: `${16 + Math.random() * 24}px`
+                }));
+            }, []);
+
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+                    {emojis.map(e => (
+                        <div 
+                            key={e.id}
+                            className="floating-emoji text-gray-300 opacity-20"
+                            style={{
+                                left: e.left,
+                                animationDuration: e.animationDuration,
+                                animationDelay: e.animationDelay,
+                                fontSize: e.fontSize
+                            }}
+                        >
+                            {e.char}
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
         const App = () => {
             const [items, setItems] = useState([]);
-            const [mode, setMode] = useState('static'); // 'static' | 'dynamic' | 'slice'
+            const [mode, setMode] = useState('static'); 
             const [showPrivacy, setShowPrivacy] = useState(false);
             
             // 设置状态
@@ -125,7 +179,7 @@
             const [removeWhiteBg, setRemoveWhiteBg] = useState(false);
             const [bgTolerance, setBgTolerance] = useState(20);
             
-            // 切片独立配置 (行与列)
+            // 切片独立配置
             const [sliceRows, setSliceRows] = useState(3);
             const [sliceCols, setSliceCols] = useState(3);
             
@@ -141,7 +195,6 @@
             const [clearConfirm, setClearConfirm] = useState(false);
             const [workerBlobUrl, setWorkerBlobUrl] = useState(null);
 
-            // 初始化：加载 gif.js 的 worker
             useEffect(() => {
                 const fetchWorker = async () => {
                     try {
@@ -165,7 +218,7 @@
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
-            // --- 切图预处理 ---
+            // ... (省略部分未变动的切图逻辑，直接保留原有逻辑结构)
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const imgUrl = URL.createObjectURL(file);
@@ -175,13 +228,11 @@
                         const size = Math.max(img.width, img.height);
                         const offsetX = (size - img.width) / 2;
                         const offsetY = (size - img.height) / 2;
-                        
                         const rows = sliceRows;
                         const cols = sliceCols;
                         const pieceW = size / cols;
                         const pieceH = size / rows;
                         const newItems = [];
-                        
                         for (let row = 0; row < rows; row++) {
                             for (let col = 0; col < cols; col++) {
                                 const index = row * cols + col + 1;
@@ -194,16 +245,7 @@
                                     status: 'pending',
                                     name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
                                     type: 'image',
-                                    sliceInfo: { 
-                                        cellX: col * pieceW,
-                                        cellY: row * pieceH,
-                                        cellSizeW: pieceW,
-                                        cellSizeH: pieceH,
-                                        imgX: offsetX,
-                                        imgY: offsetY,
-                                        imgW: img.width,
-                                        imgH: img.height
-                                    }
+                                    sliceInfo: { cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, imgX: offsetX, imgY: offsetY, imgW: img.width, imgH: img.height }
                                 });
                             }
                         }
@@ -219,17 +261,14 @@
                     video.preload = 'metadata';
                     video.src = videoUrl;
                     video.muted = true;
-                    
                     video.onloadedmetadata = () => {
                         const size = Math.max(video.videoWidth, video.videoHeight);
                         const offsetX = (size - video.videoWidth) / 2;
                         const offsetY = (size - video.videoHeight) / 2;
-                        
                         const rows = sliceRows;
                         const cols = sliceCols;
                         const pieceW = size / cols;
                         const pieceH = size / rows;
-                        
                         const newItems = [];
                         for (let i = 0; i < rows * cols; i++) {
                             const row = Math.floor(i / cols);
@@ -243,16 +282,7 @@
                                 status: 'pending',
                                 name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
                                 type: 'video',
-                                sliceInfo: {
-                                    cellX: col * pieceW,
-                                    cellY: row * pieceH,
-                                    cellSizeW: pieceW,
-                                    cellSizeH: pieceH,
-                                    videoX: offsetX,
-                                    videoY: offsetY,
-                                    videoW: video.videoWidth,
-                                    videoH: video.videoHeight
-                                }
+                                sliceInfo: { cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, videoX: offsetX, videoY: offsetY, videoW: video.videoWidth, videoH: video.videoHeight }
                             });
                         }
                         resolve(newItems);
@@ -283,7 +313,6 @@
                     setIsGlobalProcessing(false);
                     return;
                 }
-
                 const newItems = Array.from(files)
                 .filter(file => {
                     if (mode === 'static') return file.type.match('image.*');
@@ -300,7 +329,6 @@
                     name: file.name,
                     type: mode === 'dynamic' ? 'video' : 'image'
                 }));
-
                 if (newItems.length === 0) {
                     if (files.length > 0) alert(mode === 'static' ? '请上传图片文件' : '请上传视频文件');
                     return;
@@ -313,14 +341,13 @@
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            // --- 核心绘制逻辑 ---
+            // ... (DrawFrame logic unchanged) ...
             const drawFrame = (ctx, source, width, height, color, removeBg, tolerance, sliceInfo) => {
                 ctx.clearRect(0, 0, width, height);
                 if (color !== 'transparent') {
                     ctx.fillStyle = color;
                     ctx.fillRect(0, 0, width, height);
                 }
-
                 if (sliceInfo) {
                     const scale = width / sliceInfo.cellSizeW;
                     const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
@@ -338,7 +365,6 @@
                     const y = (height - h) / 2;
                     ctx.drawImage(source, x, y, w, h);
                 }
-
                 if (removeBg) {
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
@@ -355,11 +381,8 @@
                 }
             };
 
-            // 核心处理函数
             const processItem = useCallback(async (item, width, height, color, q, removeBg, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl || item.status === 'done') return item; 
-
-                // --- 视频处理 ---
                 if (item.type === 'video') {
                     if (!workerUrl) return { ...item, status: 'error' };
                     return new Promise((resolve) => {
@@ -367,7 +390,6 @@
                         video.src = item.originalUrl;
                         video.muted = true;
                         video.crossOrigin = "anonymous";
-                        
                         video.onloadedmetadata = () => {
                             const fps = currentGifConfig.fps;
                             const maxDuration = currentGifConfig.duration;
@@ -375,7 +397,6 @@
                             const duration = Math.min(video.duration, maxDuration);
                             const interval = 1 / fps;
                             let currentTime = 0;
-
                             const gif = new GIF({
                                 workers: 2,
                                 quality: gifQuality,
@@ -386,12 +407,10 @@
                                 background: color === 'transparent' ? 0x00000000 : null,
                                 transparent: color === 'transparent' ? 0x00000000 : null
                             });
-
                             const canvas = document.createElement('canvas');
                             canvas.width = width;
                             canvas.height = height;
                             const ctx = canvas.getContext('2d');
-
                             const captureFrame = () => {
                                 if (currentTime > duration) {
                                     gif.render();
@@ -399,14 +418,12 @@
                                 }
                                 video.currentTime = currentTime;
                             };
-
                             video.onseeked = () => {
                                 drawFrame(ctx, video, width, height, color, removeBg, tolerance, item.sliceInfo);
                                 gif.addFrame(ctx, {copy: true, delay: interval * 1000});
                                 currentTime += interval;
                                 captureFrame();
                             };
-
                             gif.on('finished', (blob) => {
                                 resolve({
                                     ...item,
@@ -421,8 +438,6 @@
                         video.onerror = () => resolve({ ...item, status: 'error' });
                     });
                 }
-
-                // --- 图片处理 ---
                 return new Promise((resolve) => {
                     const img = new Image();
                     img.src = item.originalUrl;
@@ -431,9 +446,7 @@
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
-                        
                         drawFrame(ctx, img, width, height, color, removeBg, tolerance, item.sliceInfo);
-
                         canvas.toBlob((blob) => {
                             resolve({
                                 ...item,
@@ -448,7 +461,6 @@
                 });
             }, []);
 
-            // 批量处理队列
             useEffect(() => {
                 const processQueue = async () => {
                     const itemsToProcess = items.filter(item => item.originalUrl && item.status === 'pending');
@@ -564,6 +576,8 @@
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
+                <BackgroundEffects />
+                
                 <div className="max-w-6xl mx-auto">
                     <header className="mb-8 text-center">
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">全能表情包工厂</h1>
