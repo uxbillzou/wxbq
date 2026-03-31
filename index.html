@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="免费在线微信表情包制作神器，一键制作240x240标准表情，MP4视频转GIF动态表情，九宫格/十六宫格切图。支持自定义背景色去除（绿幕抠图），智能压缩至500KB以下，完美适配微信表情开放平台规范。纯前端处理，保护隐私。">
-    <meta name="keywords" content="微信表情包制作, 视频转GIF, 在线GIF压缩, 九宫格切图, 微信表情尺寸, 动态表情制作, 表情包转换器, 朋友圈切图, 微信斗图工具, 绿幕抠图">
-    <title>微信表情包制作神器 - 视频转GIF/九宫格切图/自动压缩 (免费在线)</title>
+    <meta name="description" content="免费在线微信表情包制作神器，一键制作240x240标准表情，MP4视频转GIF动态表情，任意网格切图。支持自定义背景色去除（绿幕抠图），智能压缩至500KB以下，完美适配微信表情开放平台规范。纯前端处理，保护隐私。">
+    <meta name="keywords" content="微信表情包制作, 视频转GIF, 在线GIF压缩, 任意尺寸切片, 九宫格切图, 动态表情制作, 绿幕抠图">
+    <title>微信表情包制作神器 - 视频转GIF/任意网格切图/自动压缩</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -29,7 +29,7 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: currentColor; margin-top: -5px; cursor: pointer; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
         
-        /* 针对 SEO 内容的样式优化 - 增强可读性，让 Google 认为这是高质量文章 */
+        /* 针对 SEO 内容的样式优化 */
         .seo-content { line-height: 1.8; color: #4b5563; }
         .seo-content h2 { font-size: 1.8rem; font-weight: 800; margin-top: 3rem; margin-bottom: 1.5rem; color: #1f2937; letter-spacing: -0.025em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
         .seo-content h3 { font-size: 1.4rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #374151; }
@@ -73,6 +73,7 @@
             ImageIcon: (p) => <IconBase {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>,
             VideoIcon: (p) => <IconBase {...p}><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></IconBase>,
             GridIcon: (p) => <IconBase {...p}><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></IconBase>,
+            Crop: (p) => <IconBase {...p}><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></IconBase>,
             Upload: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></IconBase>,
             Download: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>,
             Settings: (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>,
@@ -126,7 +127,7 @@
                     <div className="text-sm text-gray-600 space-y-3">
                         <p><strong>1. 数据收集与隐私：</strong> 本工具（微信表情包制作神器）致力于保护您的隐私。所有图片、视频和处理过程均在您的浏览器本地（Client-side）完成，我们绝对不会将您的文件上传到任何服务器。您的创作内容仅保存在您的设备上。</p>
                         <p><strong>2. Cookies 与广告：</strong> 为了维持网站运营，我们使用 Google AdSense 展示广告。Google 作为第三方供应商，可能会使用 Cookies（如 DoubleClick Cookie）来根据您访问本网站和其他网站的记录展示个性化广告。</p>
-                        <p><strong>3. 您的权利：</strong> 您可以通过访问 <a href="http://www.google.com/ads/preferences/" target="_blank" class="text-blue-500 underline">Google 广告设置</a> 来选择停用个性化广告。</p>
+                        <p><strong>3. 您的权利：</strong> 您可以通过访问 <a href="http://www.google.com/ads/preferences/" target="_blank" className="text-blue-500 underline">Google 广告设置</a> 来选择停用个性化广告。</p>
                         <p><strong>4. 免责声明：</strong> 本工具免费提供，不附带任何明示或暗示的保证。对于因使用本工具而造成的任何数据丢失或其他损失，我们不承担责任。</p>
                     </div>
                     <button onClick={onClose} className="w-full mt-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold transition-colors">我已知晓</button>
@@ -180,17 +181,20 @@
 
         const App = () => {
             const [items, setItems] = useState([]);
-            const [mode, setMode] = useState('static'); 
+            const [mode, setMode] = useState('static'); // 'static' | 'dynamic' | 'slice' | 'free-slice'
             const [showPrivacy, setShowPrivacy] = useState(false);
             
             // 设置状态
             const [targetSize, setTargetSize] = useState({ w: 240, h: 240 });
-            const [quality, setQuality] = useState(0.9);
             const [paddingColor, setPaddingColor] = useState('transparent');
             
+            // 图片输出状态 (针对自由切片)
+            const [outFormat, setOutFormat] = useState('image/png');
+            const [imageQuality, setImageQuality] = useState(0.9);
+
             // 去底相关
-            const [removeBgEnabled, setRemoveBgEnabled] = useState(false); // 开关
-            const [removeBgColor, setRemoveBgColor] = useState('#ffffff'); // 目标颜色
+            const [removeBgEnabled, setRemoveBgEnabled] = useState(false); 
+            const [removeBgColor, setRemoveBgColor] = useState('#ffffff'); 
             const [bgTolerance, setBgTolerance] = useState(20);
             
             // 切片独立配置
@@ -233,9 +237,9 @@
                 try {
                     const result = await eyeDropper.open();
                     setRemoveBgColor(result.sRGBHex);
-                    setRemoveBgEnabled(true); // 自动开启
+                    setRemoveBgEnabled(true);
                 } catch (e) {
-                    // console.log(e);
+                    // Canceled
                 }
             };
 
@@ -248,7 +252,7 @@
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
-            // ... (省略未变动的切图逻辑) ...
+            // --- 切片：强制正方形 (Slice Mode) ---
             const processSliceImage = async (file) => {
                 return new Promise((resolve) => {
                     const imgUrl = URL.createObjectURL(file);
@@ -275,7 +279,7 @@
                                     status: 'pending',
                                     name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}.png`,
                                     type: 'image',
-                                    sliceInfo: { cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, imgX: offsetX, imgY: offsetY, imgW: img.width, imgH: img.height }
+                                    sliceInfo: { type: 'square', cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, imgX: offsetX, imgY: offsetY, imgW: img.width, imgH: img.height }
                                 });
                             }
                         }
@@ -312,7 +316,85 @@
                                 status: 'pending',
                                 name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
                                 type: 'video',
-                                sliceInfo: { cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, videoX: offsetX, videoY: offsetY, videoW: video.videoWidth, videoH: video.videoHeight }
+                                sliceInfo: { type: 'square', cellX: col * pieceW, cellY: row * pieceH, cellSizeW: pieceW, cellSizeH: pieceH, videoX: offsetX, videoY: offsetY, videoW: video.videoWidth, videoH: video.videoHeight }
+                            });
+                        }
+                        resolve(newItems);
+                    };
+                });
+            };
+
+            // --- 切片：自由尺寸/维持比例 (Free-Slice Mode) ---
+            const processFreeSliceImage = async (file) => {
+                return new Promise((resolve) => {
+                    const imgUrl = URL.createObjectURL(file);
+                    const img = new Image();
+                    img.src = imgUrl;
+                    img.onload = () => {
+                        const rows = sliceRows;
+                        const cols = sliceCols;
+                        const pieceW = img.width / cols;
+                        const pieceH = img.height / rows;
+                        const newItems = [];
+                        for (let row = 0; row < rows; row++) {
+                            for (let col = 0; col < cols; col++) {
+                                const index = row * cols + col + 1;
+                                newItems.push({
+                                    id: generateId(),
+                                    file: null,
+                                    originalUrl: imgUrl, 
+                                    processedUrl: null,
+                                    size: 0,
+                                    status: 'pending',
+                                    name: `${file.name.replace(/\.[^/.]+$/, "")}_${index}`, // 扩展名在处理时添加
+                                    type: 'image',
+                                    sliceInfo: { 
+                                        type: 'free',
+                                        srcX: col * pieceW,
+                                        srcY: row * pieceH,
+                                        srcW: pieceW,
+                                        srcH: pieceH
+                                    }
+                                });
+                            }
+                        }
+                        resolve(newItems);
+                    };
+                });
+            };
+
+            const processFreeSliceVideo = async (file) => {
+                return new Promise((resolve) => {
+                    const videoUrl = URL.createObjectURL(file);
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.src = videoUrl;
+                    video.muted = true;
+                    video.onloadedmetadata = () => {
+                        const rows = sliceRows;
+                        const cols = sliceCols;
+                        const pieceW = video.videoWidth / cols;
+                        const pieceH = video.videoHeight / rows;
+                        const newItems = [];
+                        for (let i = 0; i < rows * cols; i++) {
+                            const row = Math.floor(i / cols);
+                            const col = i % cols;
+                            newItems.push({
+                                id: generateId(),
+                                file: file,
+                                originalUrl: videoUrl,
+                                processedUrl: null,
+                                size: 0,
+                                status: 'pending',
+                                name: `${file.name.replace(/\.[^/.]+$/, "")}_${i+1}.gif`,
+                                type: 'video',
+                                sliceInfo: { 
+                                    type: 'free',
+                                    srcX: col * pieceW,
+                                    srcY: row * pieceH,
+                                    srcW: pieceW,
+                                    srcH: pieceH
+                                }
                             });
                         }
                         resolve(newItems);
@@ -321,7 +403,7 @@
             };
 
             const addFiles = async (files) => {
-                if (mode === 'slice') {
+                if (mode === 'slice' || mode === 'free-slice') {
                     setIsGlobalProcessing(true);
                     const validFiles = Array.from(files).filter(f => f.type.match('image.*') || f.type.match('video.*'));
                     if (validFiles.length === 0) {
@@ -332,10 +414,10 @@
                     const allNewItems = [];
                     for (const file of validFiles) {
                         if (file.type.match('image.*')) {
-                            const slices = await processSliceImage(file);
+                            const slices = mode === 'free-slice' ? await processFreeSliceImage(file) : await processSliceImage(file);
                             allNewItems.push(...slices);
                         } else if (file.type.match('video.*')) {
-                            const slices = await processSliceVideo(file);
+                            const slices = mode === 'free-slice' ? await processFreeSliceVideo(file) : await processSliceVideo(file);
                             allNewItems.push(...slices);
                         }
                     }
@@ -343,6 +425,8 @@
                     setIsGlobalProcessing(false);
                     return;
                 }
+                
+                // Static / Dynamic Mode
                 const newItems = Array.from(files)
                 .filter(file => {
                     if (mode === 'static') return file.type.match('image.*');
@@ -371,7 +455,7 @@
                 if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
             };
 
-            // --- 核心绘制逻辑 (含切片计算 & 背景填充 & 自定义去底) ---
+            // --- 核心绘制逻辑 ---
             const drawFrame = (ctx, source, width, height, color, removeEnabled, targetColorHex, tolerance, sliceInfo) => {
                 ctx.clearRect(0, 0, width, height);
                 if (color !== 'transparent') {
@@ -380,13 +464,20 @@
                 }
 
                 if (sliceInfo) {
-                    const scale = width / sliceInfo.cellSizeW;
-                    const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
-                    const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
-                    const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
-                    const dh = (sliceInfo.imgH ?? sliceInfo.videoH) * scale;
-                    ctx.drawImage(source, dx, dy, dw, dh);
+                    if (sliceInfo.type === 'free') {
+                        // 自由尺寸切片：完全贴合裁剪区域
+                        ctx.drawImage(source, sliceInfo.srcX, sliceInfo.srcY, sliceInfo.srcW, sliceInfo.srcH, 0, 0, width, height);
+                    } else {
+                        // 正方形强制切片 (Slice)
+                        const scale = width / sliceInfo.cellSizeW;
+                        const dx = ( (sliceInfo.imgX ?? sliceInfo.videoX) - sliceInfo.cellX ) * scale;
+                        const dy = ( (sliceInfo.imgY ?? sliceInfo.videoY) - sliceInfo.cellY ) * scale;
+                        const dw = (sliceInfo.imgW ?? sliceInfo.videoW) * scale;
+                        const dh = (sliceInfo.imgH ?? sliceInfo.videoH) * scale;
+                        ctx.drawImage(source, dx, dy, dw, dh);
+                    }
                 } else {
+                    // 普通模式：Contain 居中
                     const srcW = source.videoWidth || source.width;
                     const srcH = source.videoHeight || source.height;
                     const scale = Math.min(width / srcW, height / srcH);
@@ -407,20 +498,16 @@
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
-                        
-                        // 计算与目标颜色的距离 (简单绝对值距离)
-                        if (Math.abs(r - targetRGB.r) < tol && 
-                            Math.abs(g - targetRGB.g) < tol && 
-                            Math.abs(b - targetRGB.b) < tol) {
-                            data[i + 3] = 0; // 透明
+                        if (Math.abs(r - targetRGB.r) < tol && Math.abs(g - targetRGB.g) < tol && Math.abs(b - targetRGB.b) < tol) {
+                            data[i + 3] = 0; 
                         }
                     }
                     ctx.putImageData(imageData, 0, 0);
                 }
             };
 
-            // 核心处理函数
-            const processItem = useCallback(async (item, width, height, color, q, removeEnabled, targetColorHex, tolerance, workerUrl, currentGifConfig) => {
+            // 核心处理函数 
+            const processItem = useCallback(async (item, width, height, color, outFmt, q, removeEnabled, targetColorHex, tolerance, workerUrl, currentGifConfig) => {
                 if (!item.originalUrl || item.status === 'done') return item; 
                 
                 // --- 视频处理 ---
@@ -433,9 +520,9 @@
                         video.crossOrigin = "anonymous";
                         
                         video.onloadedmetadata = () => {
-                            const fps = currentGifConfig.fps;
-                            const maxDuration = currentGifConfig.duration;
-                            const gifQuality = currentGifConfig.quality;
+                            const fps = currentGifConfig.fps || 8;
+                            const maxDuration = currentGifConfig.duration || 3;
+                            const gifQuality = currentGifConfig.quality || 10;
                             const duration = Math.min(video.duration, maxDuration);
                             const interval = 1 / fps;
                             let currentTime = 0;
@@ -504,9 +591,9 @@
                                 processedUrl: URL.createObjectURL(blob),
                                 size: blob.size,
                                 status: 'done',
-                                name: item.name.replace(/\.[^/.]+$/, "") + ".png"
+                                name: item.name.replace(/\.[^/.]+$/, "") + (outFmt === 'image/jpeg' ? '.jpg' : '.png')
                             });
-                        }, 'image/png', q);
+                        }, outFmt, q);
                     };
                     img.onerror = () => resolve({ ...item, status: 'error' });
                 });
@@ -519,18 +606,38 @@
                     if (itemsToProcess.length > 0) {
                         setIsGlobalProcessing(true);
                         const processedResults = await Promise.all(
-                            itemsToProcess.map(item => processItem(
-                                item, 
-                                targetSize.w, 
-                                targetSize.h, 
-                                paddingColor, 
-                                quality, 
-                                removeBgEnabled,
-                                removeBgColor, // 传入目标颜色
-                                bgTolerance, 
-                                workerBlobUrl, 
-                                item.customConfig || gifConfig 
-                            ))
+                            itemsToProcess.map(item => {
+                                // 动态决定输出尺寸
+                                let pWidth = targetSize.w;
+                                let pHeight = targetSize.h;
+                                let pColor = paddingColor;
+                                let pRemoveBg = removeBgEnabled;
+                                let pFormat = 'image/png';
+                                let pQuality = 0.9;
+
+                                if (item.sliceInfo && item.sliceInfo.type === 'free') {
+                                    pWidth = Math.round(item.sliceInfo.srcW);
+                                    pHeight = Math.round(item.sliceInfo.srcH);
+                                    pColor = 'transparent'; // 自由切图强制无填充
+                                    pRemoveBg = false;      // 自由切图强制不去底 (按需)
+                                    pFormat = outFormat;
+                                    pQuality = imageQuality;
+                                }
+
+                                return processItem(
+                                    item, 
+                                    pWidth, 
+                                    pHeight, 
+                                    pColor, 
+                                    pFormat,
+                                    pQuality,
+                                    pRemoveBg,
+                                    removeBgColor, 
+                                    bgTolerance, 
+                                    workerBlobUrl, 
+                                    item.customConfig || gifConfig 
+                                );
+                            })
                         );
                         setItems(prev => prev.map(prevItem => {
                             const processed = processedResults.find(p => p.id === prevItem.id);
@@ -540,12 +647,12 @@
                     }
                 };
                 processQueue();
-            }, [items, targetSize, paddingColor, quality, removeBgEnabled, removeBgColor, bgTolerance, workerBlobUrl, processItem, gifConfig]);
+            }, [items, targetSize, paddingColor, outFormat, imageQuality, removeBgEnabled, removeBgColor, bgTolerance, workerBlobUrl, processItem, gifConfig]);
 
-            // 监听所有状态变更，重置处理状态
+            // 监听设置变化时重置队列 (针对非自由切图)
             useEffect(() => {
                 setItems(prev => prev.map(item => ({ ...item, status: 'pending', customConfig: null }))); 
-            }, [targetSize, paddingColor, quality, removeBgEnabled, removeBgColor, bgTolerance, workerBlobUrl, gifConfig]);
+            }, [targetSize, paddingColor, outFormat, imageQuality, removeBgEnabled, removeBgColor, bgTolerance, workerBlobUrl, gifConfig]);
 
             const formatSize = (bytes) => {
                 if (bytes === 0) return '...';
@@ -624,9 +731,22 @@
                 setIsZipping(false);
             };
 
-            const themeColor = mode === 'static' ? 'green' : (mode === 'dynamic' ? 'purple' : 'blue');
-            const themeIconBg = mode === 'static' ? 'bg-green-100 text-green-600' : (mode === 'dynamic' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600');
-            const themeBorderHover = `hover:border-${themeColor}-400 hover:bg-${themeColor}-50`;
+            // 主题 UI 配置
+            const themeMap = {
+                'static': { color: 'green', text: 'text-green-600', icon: 'text-green-500', iconBg: 'bg-green-100 text-green-600', borderHover: 'hover:border-green-400 hover:bg-green-50', activeBtn: 'bg-green-500 text-white border-green-500 shadow-md', bgPanel: 'bg-green-50', borderPanel: 'border-green-100' },
+                'dynamic': { color: 'purple', text: 'text-purple-600', icon: 'text-purple-500', iconBg: 'bg-purple-100 text-purple-600', borderHover: 'hover:border-purple-400 hover:bg-purple-50', activeBtn: 'bg-purple-500 text-white border-purple-500 shadow-md', bgPanel: 'bg-purple-50', borderPanel: 'border-purple-100' },
+                'slice': { color: 'blue', text: 'text-blue-600', icon: 'text-blue-500', iconBg: 'bg-blue-100 text-blue-600', borderHover: 'hover:border-blue-400 hover:bg-blue-50', activeBtn: 'bg-blue-500 text-white border-blue-500 shadow-md', bgPanel: 'bg-blue-50', borderPanel: 'border-blue-100' },
+                'free-slice': { color: 'orange', text: 'text-orange-600', icon: 'text-orange-500', iconBg: 'bg-orange-100 text-orange-600', borderHover: 'hover:border-orange-400 hover:bg-orange-50', activeBtn: 'bg-orange-500 text-white border-orange-500 shadow-md', bgPanel: 'bg-orange-50', borderPanel: 'border-orange-100' }
+            };
+            const t = themeMap[mode];
+            const themeColor = t.color; // Ensure themeColor is safely extracted from themeMap
+
+            const modeCards = [
+                { id: 'static', icon: Icons.ImageIcon, title: '静态表情', desc: 'JPG / PNG', activeClass: 'border-green-500 bg-green-50 text-green-700 shadow-md ring-2 ring-green-500 ring-offset-2', iconBg: 'bg-green-200', iconColor: 'text-green-700' },
+                { id: 'dynamic', icon: Icons.VideoIcon, title: '动态表情', desc: '视频转GIF', activeClass: 'border-purple-500 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-500 ring-offset-2', iconBg: 'bg-purple-200', iconColor: 'text-purple-700' },
+                { id: 'slice', icon: Icons.GridIcon, title: '表情包切图', desc: '强制裁剪为正方形', activeClass: 'border-blue-500 bg-blue-50 text-blue-700 shadow-md ring-2 ring-blue-500 ring-offset-2', iconBg: 'bg-blue-200', iconColor: 'text-blue-700' },
+                { id: 'free-slice', icon: Icons.Crop, title: '自由切片', desc: '维持原图比例切割', activeClass: 'border-orange-500 bg-orange-50 text-orange-700 shadow-md ring-2 ring-orange-500 ring-offset-2', iconBg: 'bg-orange-200', iconColor: 'text-orange-700' }
+            ];
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
@@ -639,27 +759,19 @@
                     </header>
 
                     {/* Mode Switcher */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        {['static', 'dynamic', 'slice'].map(m => (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {modeCards.map(m => (
                             <button 
-                                key={m}
-                                onClick={() => { setMode(m); setRemoveBgEnabled(false); setItems([]); }} 
-                                className={`p-4 rounded-3xl border-2 transition-all duration-300 flex items-center justify-center gap-3 group ${mode === m 
-                                    ? `border-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-50 text-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-700 shadow-md ring-2 ring-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-500 ring-offset-2` 
-                                    : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
+                                key={m.id}
+                                onClick={() => { setMode(m.id); setRemoveBgEnabled(false); setItems([]); }} 
+                                className={`p-3 md:p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col md:flex-row items-center md:justify-center gap-2 md:gap-3 group ${mode === m.id ? m.activeClass : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
                             >
-                                <div className={`p-2 rounded-full ${mode === m ? `bg-${m==='static'?'green':m==='dynamic'?'purple':'blue'}-200` : 'bg-gray-100'}`}>
-                                    {m === 'static' && <Icons.ImageIcon size={24} />}
-                                    {m === 'dynamic' && <Icons.VideoIcon size={24} />}
-                                    {m === 'slice' && <Icons.GridIcon size={24} />}
+                                <div className={`p-2 rounded-full ${mode === m.id ? m.iconBg : 'bg-gray-100'}`}>
+                                    <m.icon size={24} className={mode === m.id ? m.iconColor : 'text-gray-400'} />
                                 </div>
-                                <div className="text-left">
-                                    <div className="font-bold text-base">
-                                        {m === 'static' ? '静态表情' : m === 'dynamic' ? '动态表情' : '切图(3x3/4x4)'}
-                                    </div>
-                                    <div className="text-[10px] opacity-70">
-                                        {m === 'static' ? 'JPG / PNG' : m === 'dynamic' ? '视频转GIF' : '图片/视频 切割'}
-                                    </div>
+                                <div className="text-center md:text-left">
+                                    <div className="font-bold text-sm md:text-base whitespace-nowrap">{m.title}</div>
+                                    <div className="text-[10px] opacity-70 hidden md:block">{m.desc}</div>
                                 </div>
                             </button>
                         ))}
@@ -669,7 +781,7 @@
                         {/* 左侧控制区 */}
                         <div className="lg:col-span-4 space-y-6">
                             <div 
-                                className={`border-4 border-dashed rounded-3xl bg-white p-8 text-center transition-all cursor-pointer group shadow-sm relative overflow-hidden border-gray-200 ${themeBorderHover}`}
+                                className={`border-4 border-dashed rounded-3xl bg-white p-8 text-center transition-all cursor-pointer group shadow-sm relative overflow-hidden border-gray-200 ${t.borderHover}`}
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={handleDrop}
                                 onClick={() => document.getElementById('fileInput').click()}
@@ -682,16 +794,16 @@
                                     multiple 
                                     onChange={(e) => {if(e.target.files) addFiles(e.target.files); e.target.value='';}} 
                                 />
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform ${themeIconBg}`}>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform ${t.iconBg}`}>
                                     {mode === 'static' && <Icons.Plus size={32} />}
                                     {mode === 'dynamic' && <Icons.VideoIcon size={32} />}
-                                    {mode === 'slice' && <Icons.GridIcon size={32} />}
+                                    {(mode === 'slice' || mode === 'free-slice') && <Icons.GridIcon size={32} />}
                                 </div>
                                 <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                                    {mode === 'slice' ? '点击添加素材(图/视频)' : `点击添加${mode === 'static' ? '图片' : '视频'}`}
+                                    {(mode === 'slice' || mode === 'free-slice') ? '点击添加素材(图/视频)' : `点击添加${mode === 'static' ? '图片' : '视频'}`}
                                 </h3>
                                 <p className="text-gray-400 text-xs">
-                                    {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : mode === 'dynamic' ? '支持 MP4, MOV' : '自动裁剪正方形并切图'}
+                                    {mode === 'static' ? '支持批量 JPG, PNG, WEBP' : mode === 'dynamic' ? '支持 MP4, MOV' : mode === 'slice' ? '自动裁剪正方形并切图' : '按原图比例切分网格'}
                                 </p>
                             </div>
 
@@ -701,102 +813,120 @@
                                 </div>
                                 <div className="space-y-6">
                                     
-                                    {mode === 'slice' && (
-                                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                                    {(mode === 'slice' || mode === 'free-slice') && (
+                                        <div className={`p-4 rounded-xl ${t.bgPanel} ${t.borderPanel} border`}>
                                             <div className="flex justify-between items-center mb-3">
-                                                <div className="flex items-center gap-2 text-blue-800">
-                                                    <Icons.GridIcon size={16} />
-                                                    <h4 className="font-bold text-sm">自定义切片网格</h4>
+                                                <div className={`flex items-center gap-2 ${t.text} font-bold text-sm`}>
+                                                    {mode === 'slice' ? <Icons.GridIcon size={16} /> : <Icons.Crop size={16} />}
+                                                    自定义切片网格
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    <button onClick={() => { setSliceRows(3); setSliceCols(3); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===3 && sliceCols===3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}>3x3</button>
-                                                    <button onClick={() => { setSliceRows(4); setSliceCols(4); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===4 && sliceCols===4 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}>4x4</button>
+                                                    <button onClick={() => { setSliceRows(3); setSliceCols(3); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===3 && sliceCols===3 ? `${t.activeBtn}` : `bg-white ${t.text} border-gray-200 hover:bg-white`}`}>3x3</button>
+                                                    <button onClick={() => { setSliceRows(4); setSliceCols(4); }} className={`text-[10px] px-2 py-1 border rounded transition-colors ${sliceRows===4 && sliceCols===4 ? `${t.activeBtn}` : `bg-white ${t.text} border-gray-200 hover:bg-white`}`}>4x4</button>
                                                 </div>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between text-xs text-gray-500"><span>行数 (Rows)</span><span className="font-mono font-bold text-blue-600">{sliceRows}</span></div>
-                                                    <input type="range" min="1" max="8" step="1" value={sliceRows} onChange={(e) => setSliceRows(parseInt(e.target.value))} className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                                    <div className="flex justify-between text-xs text-gray-500"><span>行数 (Rows)</span><span className={`font-mono font-bold ${t.text}`}>{sliceRows}</span></div>
+                                                    <input type="range" min="1" max="8" step="1" value={sliceRows} onChange={(e) => setSliceRows(parseInt(e.target.value))} className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${mode==='slice'?'bg-blue-200 accent-blue-500':'bg-orange-200 accent-orange-500'}`} />
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between text-xs text-gray-500"><span>列数 (Cols)</span><span className="font-mono font-bold text-blue-600">{sliceCols}</span></div>
-                                                    <input type="range" min="1" max="8" step="1" value={sliceCols} onChange={(e) => setSliceCols(parseInt(e.target.value))} className="w-full h-1 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                                    <div className="flex justify-between text-xs text-gray-500"><span>列数 (Cols)</span><span className={`font-mono font-bold ${t.text}`}>{sliceCols}</span></div>
+                                                    <input type="range" min="1" max="8" step="1" value={sliceCols} onChange={(e) => setSliceCols(parseInt(e.target.value))} className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${mode==='slice'?'bg-blue-200 accent-blue-500':'bg-orange-200 accent-orange-500'}`} />
                                                 </div>
-                                                <div className="text-[10px] text-blue-400 text-center pt-1 border-t border-blue-100">将生成 {sliceRows * sliceCols} 个文件</div>
+                                                <div className={`text-[10px] opacity-70 text-center pt-1 border-t ${t.borderPanel} ${t.text}`}>将生成 {sliceRows * sliceCols} 个文件</div>
                                             </div>
                                         </div>
                                     )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {sizePresets.map(preset => (
-                                                <button key={preset.label} onClick={() => setTargetSize({ w: preset.w, h: preset.h })} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? `bg-${themeColor}-500 text-white border-${themeColor}-500 shadow-md` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{preset.label}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
-                                        <div className="flex gap-2 mb-3">
-                                            <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明</button>
-                                            <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色</button>
-                                            <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
-                                                <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
-                                                <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
-                                                <span className="flex items-center gap-1"><Icons.Palette size={12}/>自定义</span>
-                                            </label>
-                                        </div>
-
-                                        {/* 全新设计的“去除背景”功能模块 */}
-                                        <div className={`p-3 rounded-xl border transition-colors ${removeBgEnabled ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <label className="flex items-center gap-2 cursor-pointer select-none">
-                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeBgEnabled ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>{removeBgEnabled && <Icons.CheckCircle size={14} className="text-white" />}</div>
-                                                    <input type="checkbox" className="hidden" checked={removeBgEnabled} onChange={(e) => setRemoveBgEnabled(e.target.checked)} />
-                                                    <span className={`text-sm font-medium ${removeBgEnabled ? 'text-blue-700' : 'text-gray-600'}`}>去除背景</span>
-                                                </label>
-                                                {/* 吸管按钮 */}
-                                                <button 
-                                                    onClick={openEyeDropper}
-                                                    title="吸取屏幕颜色 (仅支持 Chrome 桌面版)"
-                                                    className={`p-1.5 rounded-lg hover:bg-blue-100 transition-colors ${removeBgEnabled ? 'text-blue-600' : 'text-gray-400'}`}
-                                                >
-                                                    <Icons.Pipette size={16} />
-                                                </button>
+                                    {/* 自由尺寸模式下的图片压缩设置 */}
+                                    {mode === 'free-slice' && (
+                                        <div className={`p-4 rounded-xl ${t.bgPanel} ${t.borderPanel} border`}>
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div className={`flex items-center gap-2 ${t.text} font-bold text-sm`}>
+                                                    <Icons.Sliders size={16} />
+                                                    图片输出设置
+                                                </div>
                                             </div>
-                                            
-                                            {removeBgEnabled && (
-                                                <div className="space-y-3 pt-2 border-t border-blue-100">
-                                                    {/* 目标颜色选择 */}
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-xs text-blue-600">目标颜色</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-mono text-gray-500">{removeBgColor}</span>
-                                                            <div className="relative w-6 h-6 rounded-full border border-gray-300 overflow-hidden shadow-sm">
-                                                                <input 
-                                                                    type="color" 
-                                                                    value={removeBgColor} 
-                                                                    onChange={(e) => setRemoveBgColor(e.target.value)}
-                                                                    className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer"
-                                                                />
-                                                            </div>
-                                                        </div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-xs text-gray-500">
+                                                        <span>输出格式</span>
                                                     </div>
-
-                                                    {/* 容差滑块 */}
-                                                    <div>
-                                                        <div className="flex justify-between text-xs text-blue-600 mb-1">
-                                                            <span>容差 (相似度)</span>
-                                                            <span>{bgTolerance}</span>
-                                                        </div>
-                                                        <input type="range" min="1" max="100" value={bgTolerance} onChange={(e) => setBgTolerance(parseInt(e.target.value))} className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => setOutFormat('image/png')} className={`flex-1 py-1.5 text-xs border rounded transition-colors ${outFormat === 'image/png' ? `${t.activeBtn}` : `bg-white ${t.text} border-gray-200`}`}>PNG (无损)</button>
+                                                        <button onClick={() => setOutFormat('image/jpeg')} className={`flex-1 py-1.5 text-xs border rounded transition-colors ${outFormat === 'image/jpeg' ? `${t.activeBtn}` : `bg-white ${t.text} border-gray-200`}`}>JPG (可压缩)</button>
                                                     </div>
                                                 </div>
-                                            )}
+                                                {outFormat === 'image/jpeg' && (
+                                                    <div className="space-y-2 pt-2 border-t border-orange-200/50">
+                                                        <div className="flex justify-between text-xs text-gray-500"><span>画面质量</span><span className={`font-mono font-bold ${t.text}`}>{Math.round(imageQuality * 100)}%</span></div>
+                                                        <input type="range" min="0.1" max="1" step="0.1" value={imageQuality} onChange={(e) => setImageQuality(parseFloat(e.target.value))} className="w-full h-1 bg-orange-200 rounded-lg appearance-none cursor-pointer accent-orange-500" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
+                                    {/* 非自由尺寸模式下显示 目标尺寸 和 背景处理 */}
+                                    {mode !== 'free-slice' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-600 mb-2">目标尺寸 (单张)</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {sizePresets.map(preset => (
+                                                        <button key={preset.label} onClick={() => setTargetSize({ w: preset.w, h: preset.h })} className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${targetSize.w === preset.w && targetSize.h === preset.h ? t.activeBtn : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{preset.label}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-600 mb-2">背景处理</label>
+                                                <div className="flex gap-2 mb-3">
+                                                    <button onClick={() => setPaddingColor('transparent')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'transparent' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-${themeColor}-50 text-${themeColor}-700` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border bg-gray-100" style={{backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)', backgroundSize: '4px 4px'}}></div>透明</button>
+                                                    <button onClick={() => setPaddingColor('white')} className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 ${paddingColor === 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}><div className="w-3 h-3 rounded border border-gray-300 bg-white"></div>白色</button>
+                                                    <label className={`flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer ${paddingColor !== 'transparent' && paddingColor !== 'white' ? `ring-2 ring-${themeColor}-500 border-${themeColor}-500 bg-white text-gray-900` : 'border-gray-200'}`}>
+                                                        <input type="color" className="opacity-0 w-0 h-0 absolute" value={paddingColor === 'transparent' ? '#ffffff' : paddingColor} onChange={(e) => setPaddingColor(e.target.value)} />
+                                                        <div className="w-3 h-3 rounded border border-gray-300" style={{backgroundColor: paddingColor !== 'transparent' ? paddingColor : 'transparent'}}></div>
+                                                        <span className="flex items-center gap-1"><Icons.Palette size={12}/>自定义</span>
+                                                    </label>
+                                                </div>
+
+                                                <div className={`p-3 rounded-xl border transition-colors ${removeBgEnabled ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'}`}>
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${removeBgEnabled ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>{removeBgEnabled && <Icons.CheckCircle size={14} className="text-white" />}</div>
+                                                            <input type="checkbox" className="hidden" checked={removeBgEnabled} onChange={(e) => setRemoveBgEnabled(e.target.checked)} />
+                                                            <span className={`text-sm font-medium ${removeBgEnabled ? 'text-blue-700' : 'text-gray-600'}`}>去除背景</span>
+                                                        </label>
+                                                        <button onClick={openEyeDropper} title="吸取屏幕颜色 (仅支持 Chrome 桌面版)" className={`p-1.5 rounded-lg hover:bg-blue-100 transition-colors ${removeBgEnabled ? 'text-blue-600' : 'text-gray-400'}`}>
+                                                            <Icons.Pipette size={16} />
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {removeBgEnabled && (
+                                                        <div className="space-y-3 pt-2 border-t border-blue-100">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs text-blue-600">目标颜色</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-mono text-gray-500">{removeBgColor}</span>
+                                                                    <div className="relative w-6 h-6 rounded-full border border-gray-300 overflow-hidden shadow-sm">
+                                                                        <input type="color" value={removeBgColor} onChange={(e) => setRemoveBgColor(e.target.value)} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex justify-between text-xs text-blue-600 mb-1"><span>容差 (相似度)</span><span>{bgTolerance}</span></div>
+                                                                <input type="range" min="1" max="100" value={bgTolerance} onChange={(e) => setBgTolerance(parseInt(e.target.value))} className="w-full h-1.5 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* 动态和强制切片模式下的 GIF 压缩设置 */}
                                     {(mode === 'dynamic' || mode === 'slice') && (
                                         <div className="space-y-4 p-4 rounded-xl bg-purple-50 border border-purple-100">
                                             <div className="flex justify-between items-center">
@@ -840,19 +970,19 @@
                         <div className="lg:col-span-8">
                             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 min-h-[500px]">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className={`font-bold text-gray-800 flex items-center gap-2`}><Icons.FileImage size={20} className={`text-${themeColor}-500`}/>处理结果 ({items.length})</h3>
-                                    {isGlobalProcessing && <span className={`text-sm flex items-center gap-2 animate-pulse text-${themeColor}-600`}><Icons.RefreshCw size={14} className="animate-spin"/>处理中...</span>}
+                                    <h3 className={`font-bold text-gray-800 flex items-center gap-2`}><Icons.FileImage size={20} className={t.icon}/>处理结果 ({items.length})</h3>
+                                    {isGlobalProcessing && <span className={`text-sm flex items-center gap-2 animate-pulse ${t.text}`}><Icons.RefreshCw size={14} className="animate-spin"/>处理中...</span>}
                                 </div>
 
                                 {items.length > 0 ? (
                                     <div 
                                         className="grid gap-4"
-                                        style={{ gridTemplateColumns: mode === 'slice' ? `repeat(${sliceCols}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(140px, 1fr))' }}
+                                        style={{ gridTemplateColumns: (mode === 'slice' || mode === 'free-slice') ? `repeat(${sliceCols}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(140px, 1fr))' }}
                                     >
                                         {items.map(item => (
                                             <div key={item.id} className="relative group bg-gray-50 rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
                                                 <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 z-10 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Icons.X size={14} /></button>
-                                                <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100 relative" style={{ aspectRatio: `${targetSize.w}/${targetSize.h}` }}>
+                                                <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU1ZTUiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTVlNSIvPgo8L3N2Zz4=')] rounded-lg overflow-hidden flex items-center justify-center mb-3 border border-gray-100 relative" style={{ aspectRatio: item.sliceInfo?.type === 'free' ? `${item.sliceInfo.srcW}/${item.sliceInfo.srcH}` : `${targetSize.w}/${targetSize.h}` }}>
                                                     {item.processedUrl ? (
                                                         <img src={item.processedUrl} alt="processed" className="max-w-full max-h-full object-contain" />
                                                     ) : (
@@ -866,7 +996,7 @@
                                                         <>
                                                             <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">GIF</div>
                                                             {/* Smart Compress Button if size > 500KB */}
-                                                            {item.size > 500 * 1024 && (
+                                                            {item.size > 500 * 1024 && mode !== 'free-slice' && (
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); compressItem(item.id); }}
                                                                     className="absolute top-1 left-1 bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-sm flex items-center gap-1 transition-colors"
@@ -878,9 +1008,9 @@
                                                             )}
                                                         </>
                                                     )}
-                                                    {mode === 'slice' && item.name.match(/_(\d+)\.(png|gif)$/) && (
-                                                        <div className="absolute top-1 left-1 bg-blue-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
-                                                            {item.name.match(/_(\d+)\.(png|gif)$/)[1]}
+                                                    {(mode === 'slice' || mode === 'free-slice') && item.name.match(/_(\d+)\.(png|jpg|jpeg|gif)$/) && (
+                                                        <div className="absolute top-1 left-1 bg-black/40 backdrop-blur-sm text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
+                                                            {item.name.match(/_(\d+)\.(png|jpg|jpeg|gif)$/)[1]}
                                                         </div>
                                                     )}
                                                 </div>
@@ -894,13 +1024,13 @@
                                             </div>
                                         ))}
                                         {/* 继续添加按钮：非切图模式显示继续添加，切图模式下在空状态显示网格占位 */}
-                                        {mode !== 'slice' && (
-                                            <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] hover:bg-gray-50 hover:border-${themeColor}-400 hover:text-${themeColor}-500`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
+                                        {(mode !== 'slice' && mode !== 'free-slice') && (
+                                            <div onClick={() => document.getElementById('fileInput').click()} className={`border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 transition-colors cursor-pointer min-h-[160px] ${t.borderHover} hover:${t.text}`}><Icons.Plus size={24} className="mb-2" /><span className="text-sm font-medium">继续添加</span></div>
                                         )}
                                     </div>
                                 ) : (
                                     /* Empty State */
-                                    mode === 'slice' ? (
+                                    (mode === 'slice' || mode === 'free-slice') ? (
                                         <div className="h-full flex flex-col items-center justify-center p-8 text-gray-300 border-2 border-dashed border-gray-100 rounded-2xl min-h-[500px]">
                                              <div 
                                                 className="grid gap-2 w-full max-w-md aspect-square"
@@ -913,7 +1043,7 @@
                                                     <div 
                                                         key={i} 
                                                         onClick={() => document.getElementById('fileInput').click()}
-                                                        className="border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                        className={`border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center ${t.borderHover} transition-colors cursor-pointer`}
                                                     >
                                                         <span className="text-xs text-gray-300 font-mono">{i + 1}</span>
                                                     </div>
@@ -940,13 +1070,14 @@
                         <ul>
                             <li><strong>智能尺寸调整：</strong>一键将图片调整为微信标准的 240x240、120x120 或 750x400 像素，自动居中并填充透明或白色背景，无需复杂的 PS 操作。</li>
                             <li><strong>视频转动态表情 (GIF)：</strong>支持 MP4、MOV 等格式视频直接转换为 GIF 动图。独家算法自动优化帧率和画质，支持一键压缩至 500KB 以下，完美适配微信添加限制。</li>
-                            <li><strong>九宫格切图：</strong>支持将一张大图或一段视频自动切割为 3x3 (九宫格) 或 4x4 (十六宫格)，朋友圈发图或群聊刷屏的神器。视频也能切成同步的 9 个 GIF 哦！</li>
+                            <li><strong>多模式切图：</strong>支持将图片或视频切割为网格。您可以选择“强制正方形切图”适合表情包制作，或者选择“自由切图”完美保留原图比例进行任意网格（最高 8x8）切割。</li>
+                            <li><strong>智能去底色（绿幕抠图）：</strong>新增自定义吸管工具，可提取视频或图片中任意背景色并将其变透明，完美支持视频抠图换底。</li>
                             <li><strong>隐私安全保护：</strong>本工具所有处理均在您的浏览器本地完成，不会将您的原图或视频上传到任何服务器，绝对保障您的素材隐私安全。</li>
                         </ul>
 
                         <h3>常见问题 (FAQ)</h3>
                         <p><strong>Q: 生成的 GIF 太大无法添加到微信怎么办？</strong><br/>A: 请使用我们特有的“一键压缩”功能。在动态表情模式下，如果结果超过 500KB，图片左上角会出现红色的压缩按钮，点击即可自动优化参数。</p>
-                        <p><strong>Q: 切图模式支持自定义行列吗？</strong><br/>A: 支持。在“九宫格切图”模式下，您可以自由拖动滑块设置 1x1 到 8x8 的任意网格布局，右侧预览区会实时显示切割效果。</p>
+                        <p><strong>Q: 切图模式支持自定义行列吗？</strong><br/>A: 支持。在“切图”模式下，您可以自由拖动滑块设置 1x1 到 8x8 的任意网格布局，右侧预览区会实时显示切割效果空位，非常直观。</p>
                     </article>
 
                     <footer className="mt-16 pt-8 border-t border-gray-200">
